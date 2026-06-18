@@ -1054,8 +1054,7 @@ button {
   font-size: 1.42rem;
 }
 
-.interaction-hint,
-.stage-observe-hint {
+.interaction-hint {
   position: absolute;
   left: 18px;
   z-index: 2;
@@ -1069,10 +1068,6 @@ button {
 
 .interaction-hint {
   bottom: 18px;
-}
-
-.stage-observe-hint {
-  bottom: 64px;
 }
 
 .soundscape-bar {
@@ -1469,14 +1464,6 @@ button {
   .viewer-stage::after,
   .interaction-hint {
     display: none;
-  }
-
-  .stage-observe-hint {
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
-    max-width: none;
-    border-radius: 16px;
   }
 
   .info-panel {

@@ -521,10 +521,6 @@ function syncViewerControlState() {
 
 function applyViewerCopy(exhibit) {
   document.querySelector("#infoPanel").innerHTML = buildInfoPanel(exhibit);
-  document.querySelector("#viewerObserveHint").textContent =
-    exhibit.category === "人物"
-      ? `行当观察：${exhibit.visualFocus}`
-      : `工艺观察：${exhibit.description}`;
   document.querySelector("#soundscapeScene").textContent = exhibit.soundscapeScene;
   document.querySelector("#soundscapeTags").textContent = exhibit.soundscape.join(" · ");
   document.querySelector("#soundscapeStatus").textContent = exhibit.hasModel
