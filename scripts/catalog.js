@@ -23,10 +23,57 @@ const characterAssetMap = {
 };
 
 const objectAssetMap = {
+  小型线索木匣: {
+    imagePath: "./assets/object/小型线索木匣.png",
+    modelPath: "./assets/object/小型线索木匣.glb"
+  },
+  六国封相令牌: {
+    imagePath: "./assets/object/六国封相令牌.png",
+    modelPath: "./assets/object/六国封相令牌.glb"
+  },
   凤冠: {
     imagePath: "./assets/object/凤冠.png",
-    previewVideoPath: "./assets/object/凤冠.mp4",
     modelPath: "./assets/object/凤冠.glb"
+  },
+  丞相玉佩: {
+    imagePath: "./assets/object/丞相玉佩.png",
+    modelPath: "./assets/object/丞相玉佩.glb"
+  },
+  "声境碎片-唱腔记忆片": {
+    imagePath: "./assets/object/声境碎片-唱腔记忆片.png",
+    modelPath: "./assets/object/声境碎片-唱腔记忆片.glb"
+  },
+  "声境碎片-锣鼓记忆晶片": {
+    imagePath: "./assets/object/声境碎片-锣鼓记忆晶片.png",
+    modelPath: "./assets/object/声境碎片-锣鼓记忆晶片.glb"
+  },
+  官印: {
+    imagePath: "./assets/object/官印.png",
+    modelPath: "./assets/object/官印.glb"
+  },
+  封蜡密函: {
+    imagePath: "./assets/object/封蜡密函.png",
+    modelPath: "./assets/object/封蜡密函.glb"
+  },
+  战国密信: {
+    imagePath: "./assets/object/战国密信.png",
+    modelPath: "./assets/object/战国密信.glb"
+  },
+  粤剧折扇: {
+    imagePath: "./assets/object/粤剧折扇.png",
+    modelPath: "./assets/object/粤剧折扇.glb"
+  },
+  数字档案碎片: {
+    imagePath: "./assets/object/数字档案碎片.png",
+    modelPath: "./assets/object/数字档案碎片.glb"
+  },
+  舞台机关钥匙: {
+    imagePath: "./assets/object/舞台机关钥匙.png",
+    modelPath: "./assets/object/舞台机关钥匙.glb"
+  },
+  蟒袍胸前补子纹样: {
+    imagePath: "./assets/object/蟒袍胸前补子纹样.png",
+    modelPath: "./assets/object/蟒袍胸前补子纹样.glb"
   }
 };
 
@@ -294,99 +341,194 @@ export const characterExhibits = [
 
 export const objectExhibits = [
   {
+    id: "clue-wooden-box",
+    name: "小型线索木匣",
+    category: "物件",
+    objectType: "搜证容器",
+    role: "剧本杀线索收纳道具 / 搜证入口",
+    storyStage: "搜证 / 疑云",
+    clueLevel: "普通",
+    quote: "匣中未必藏重物，却可能藏着第一道破局线索。",
+    description:
+      "一个用于收纳密信、令牌或声景碎片的小型木匣，适合作为玩家进入搜证流程的第一个互动物件。",
+    symbolism: "象征剧情由封相盛典转入暗线搜证。",
+    soundscape: ["木匣开合声", "轻微摩擦声", "低频疑云"],
+    soundscapeScene: "搜证密室"
+  },
+  {
+    id: "six-states-token",
+    name: "六国封相令牌",
+    category: "物件",
+    objectType: "令牌",
+    role: "封相仪式权限道具 / 朝堂通行证物",
+    storyStage: "封相 / 搜证",
+    clueLevel: "关键",
+    quote: "令牌可入朝堂，也可揭开谁曾踏入禁地。",
+    description:
+      "刻有六国封相仪式意味的令牌，可作为朝堂出入、角色身份与动线推理的关键物证。",
+    symbolism: "象征封相仪式的权力秩序，以及朝堂内部的出入权限。",
+    soundscape: ["金属轻碰声", "靴步声", "朝堂回声"],
+    soundscapeScene: "封相大典"
+  },
+  {
     id: "phoenix-crown",
     name: "凤冠",
     category: "物件",
     objectType: "冠饰",
     role: "戏曲冠饰 / 道具展示模型",
     storyStage: "开锣 / 封相",
-    storyTags: ["开锣", "封相"],
     clueLevel: "关键视觉线索",
     quote: "珠翠满冠，是盛典表象，也是身份秩序。",
-    soundscape: ["珠饰碰撞声", "后台整冠声", "远处锣鼓点"],
     description: "适合观察珠饰、流苏、金属骨架、青绿羽纹与红色垂珠层次。",
     symbolism: "代表封相大典中的华丽表象与身份秩序。",
-    status: "ready",
+    soundscape: ["珠饰碰撞声", "后台整冠声", "远处锣鼓点"],
     soundscapeScene: "后台整冠"
   },
   {
-    id: "six-seals",
-    name: "六国相印",
+    id: "chancellor-jade-pendant",
+    name: "丞相玉佩",
     category: "物件",
-    objectType: "相印",
-    role: "封相权力象征 / 关键剧情道具",
+    objectType: "佩饰",
+    role: "身份象征 / 苏秦相关物证",
     storyStage: "封相 / 反转",
-    storyTags: ["封相", "反转"],
     clueLevel: "关键",
-    quote: "六印落身，权力亦成枷锁。",
-    soundscape: ["印章落案声", "朝堂回声", "低频疑云"],
-    description: "用于展示封相权力结构与六印并悬的仪式张力。",
-    symbolism: "既象征加身之权，也暗示被六国共同制衡的困局。",
-    status: "coming-soon",
-    soundscapeScene: "封相大典"
-  },
-  {
-    id: "hezong-secret-letter",
-    name: "合纵密信",
-    category: "物件",
-    objectType: "密信",
-    role: "搜证文书 / 暗线证物",
-    storyStage: "搜证 / 反转",
-    storyTags: ["搜证", "反转"],
-    clueLevel: "隐藏",
-    quote: "信中所写，未必是盟约；未写之处，才是真相。",
-    soundscape: ["翻信纸声", "低频疑云", "烛火声"],
-    description: "用于呈现同盟缝隙中的书信往来与未明暗语。",
-    symbolism: "是剧本杀搜证链路中的关键文书线索。",
-    status: "coming-soon",
-    soundscapeScene: "搜证密室"
-  },
-  {
-    id: "court-token",
-    name: "朝堂令牌",
-    category: "物件",
-    objectType: "令牌",
-    role: "出入权限 / 动线线索",
-    storyStage: "疑云 / 搜证",
-    storyTags: ["疑云", "搜证"],
-    clueLevel: "普通",
-    quote: "一枚令牌，能开殿门，也能开杀局。",
-    soundscape: ["金属轻碰声", "靴步声", "殿门声"],
-    description: "用于梳理朝堂空间、出入路径与守卫漏洞。",
-    symbolism: "是权力通行与行动轨迹的实物凭证。",
-    status: "coming-soon",
+    quote: "玉佩悬身，既是荣光，也是无声的枷锁。",
+    description:
+      "与丞相身份相关的玉佩，可用于呈现苏秦受封后的身份变化与权力压力。",
+    symbolism: "象征苏秦从策士到六国丞相的身份转换。",
+    soundscape: ["玉佩轻响", "朝堂回声", "低频疑云"],
     soundscapeScene: "朝堂疑云"
   },
   {
-    id: "edict-scroll",
-    name: "封相诏书",
+    id: "vocal-memory-fragment",
+    name: "声境碎片-唱腔记忆片",
     category: "物件",
-    objectType: "封相文书",
-    role: "仪式文书 / 关键流程线索",
-    storyStage: "封相 / 搜证",
-    storyTags: ["封相", "搜证"],
-    clueLevel: "关键",
-    quote: "诏书宣读之时，真正的安排早已完成。",
-    soundscape: ["翻诏书声", "毛笔书写声", "朝堂回声"],
-    description: "用于追踪封相流程、传诏顺序与礼制破绽。",
-    symbolism: "是表层秩序与暗中安排并存的象征。",
-    status: "coming-soon",
+    objectType: "声境碎片",
+    role: "唱腔声景记忆 / 数字声音线索",
+    storyStage: "开锣 / 后台 / 反转",
+    clueLevel: "隐藏",
+    quote: "一句唱腔未完，台下的真相已先露声息。",
+    description:
+      "承载粤剧唱腔记忆的数字声境碎片，用于提示玩家戏曲声音与剧情暗线之间的关联。",
+    symbolism: "象征传统唱腔被转译为可搜证、可互动的数字声音记忆。",
+    soundscape: ["伶人吊嗓声", "粤剧唱腔", "空间混响"],
+    soundscapeScene: "戏棚后台"
+  },
+  {
+    id: "drum-memory-chip",
+    name: "声境碎片-锣鼓记忆晶片",
+    category: "物件",
+    objectType: "声境碎片",
+    role: "锣鼓声景记忆 / 节奏线索",
+    storyStage: "开锣 / 疑云 / 反转",
+    clueLevel: "隐藏",
+    quote: "锣鼓点一变，盛典便不再只是盛典。",
+    description:
+      "保存锣鼓点与梆子节奏的声境晶片，可用于暗示剧情节奏从喜庆转向悬疑。",
+    symbolism: "象征粤剧锣鼓从舞台节奏转化为剧本杀推理线索。",
+    soundscape: ["锣鼓点", "梆子", "低频反转声"],
     soundscapeScene: "封相大典"
   },
   {
-    id: "soundscape-fragment",
-    name: "锣鼓声景碎片",
+    id: "official-seal",
+    name: "官印",
     category: "物件",
-    objectType: "声景碎片",
-    role: "声音线索 / 情绪转场提示",
-    storyStage: "开锣 / 疑云 / 反转",
-    storyTags: ["开锣", "疑云", "反转"],
+    objectType: "印章",
+    role: "权力物证 / 朝堂核心证物",
+    storyStage: "封相 / 搜证 / 反转",
+    clueLevel: "关键",
+    quote: "印落之处，不只是权力，也是责任与困局。",
+    description: "代表官职、权力与命令合法性的官印，可作为朝堂谜案中的核心证物。",
+    symbolism: "象征权力授予、政治秩序与真相被盖印封存。",
+    soundscape: ["印章落案声", "朝堂回声", "低频疑云"],
+    soundscapeScene: "封相大典"
+  },
+  {
+    id: "wax-sealed-letter",
+    name: "封蜡密函",
+    category: "物件",
+    objectType: "密函",
+    role: "隐藏文书 / 私通信物",
+    storyStage: "疑云 / 搜证 / 反转",
     clueLevel: "隐藏",
-    quote: "锣鼓点一变，盛典便不再只是盛典。",
-    soundscape: ["锣鼓点", "梆子", "低频反转声"],
-    description: "用于展示声景如何提示戏台气氛、剧情转折与暗线逼近。",
-    symbolism: "是数智声景设计中最直接的情绪线索载体。",
-    status: "coming-soon",
+    quote: "蜡封未破，疑心已起。",
+    description:
+      "以封蜡封存的密函，适合承载私通、暗线交易或未公开盟约等剧本杀线索。",
+    symbolism: "象征表面未被拆开的秘密，以及各国暗中往来的痕迹。",
+    soundscape: ["封蜡裂开声", "翻信纸声", "烛火声"],
+    soundscapeScene: "搜证密室"
+  },
+  {
+    id: "warring-states-letter",
+    name: "战国密信",
+    category: "物件",
+    objectType: "密信",
+    role: "战国文书 / 暗线证物",
+    storyStage: "搜证 / 反转",
+    clueLevel: "隐藏",
+    quote: "信中所写未必是真相，缺失之处才是关键。",
+    description:
+      "记录六国往来、军情或私下协议的战国密信，是推理各国真实立场的重要文书物证。",
+    symbolism: "象征合纵联盟背后的脆弱信任与利益交换。",
+    soundscape: ["翻信纸声", "笔墨声", "低频疑云"],
+    soundscapeScene: "搜证密室"
+  },
+  {
+    id: "cantonese-opera-fan",
+    name: "粤剧折扇",
+    category: "物件",
+    objectType: "戏曲道具",
+    role: "表演道具 / 身段辅助物",
+    storyStage: "开锣 / 后台",
+    clueLevel: "普通",
+    quote: "一开一合之间，唱念做打皆有章法。",
+    description: "粤剧表演中常见的折扇道具，可用于展示人物身段、舞台动作与戏曲美学。",
+    symbolism: "象征粤剧表演程式与角色气质。",
+    soundscape: ["折扇开合声", "水袖破风声", "戏棚环境声"],
+    soundscapeScene: "戏棚后台"
+  },
+  {
+    id: "digital-archive-fragment",
+    name: "数字档案碎片",
+    category: "物件",
+    objectType: "数字档案",
+    role: "数字化线索 / 记忆残片",
+    storyStage: "搜证 / 反转",
+    clueLevel: "隐藏",
+    quote: "碎片不是残缺，而是等待被重新拼合的真相。",
+    description:
+      "将戏曲、声景与剧情线索数字化后形成的档案碎片，可作为系统化搜证与剧情解锁的介面元素。",
+    symbolism: "象征非遗内容从舞台记忆转化为数字档案与互动线索。",
+    soundscape: ["数字杂讯", "记忆回放声", "低频脉冲"],
+    soundscapeScene: "搜证密室"
+  },
+  {
+    id: "stage-mechanism-key",
+    name: "舞台机关钥匙",
+    category: "物件",
+    objectType: "钥匙",
+    role: "机关解锁道具 / 场景互动线索",
+    storyStage: "搜证 / 后台",
+    clueLevel: "关键",
+    quote: "能开的不只是机关，也可能是另一重戏中戏。",
+    description: "用于开启舞台暗格、后台箱匣或搜证场景机关的钥匙道具。",
+    symbolism: "象征玩家由观众转为参与者，打开戏台背后的隐藏空间。",
+    soundscape: ["钥匙碰撞声", "木门开合声", "机关转动声"],
+    soundscapeScene: "戏棚后台"
+  },
+  {
+    id: "mangpao-buzi-pattern",
+    name: "蟒袍胸前补子纹样",
+    category: "物件",
+    objectType: "戏服纹样",
+    role: "服饰细节 / 粤剧行头观察物",
+    storyStage: "开锣 / 封相",
+    clueLevel: "普通",
+    quote: "一方补子，绣的是身份，也绣着舞台秩序。",
+    description:
+      "蟒袍胸前的补子纹样，可用于观察粤剧服饰的图案层次、身份符号与舞台美学。",
+    symbolism: "象征戏曲服饰中的身份编码与礼制秩序。",
+    soundscape: ["衣袍摩擦声", "后台整衣声", "远处锣鼓点"],
     soundscapeScene: "封相大典"
   }
 ].map((exhibit) => {
@@ -395,10 +537,9 @@ export const objectExhibits = [
     ...exhibit,
     assetCategory: "object",
     imagePath: assets.imagePath ?? "",
-    previewVideoPath: assets.previewVideoPath ?? "",
     modelPath: assets.modelPath ?? "",
     hasModel: Boolean(assets.modelPath),
-    archiveState: assets.modelPath ? "已入库" : "模型待入库"
+    archiveState: assets.modelPath ? "已入库" : "展品尚未入库"
   };
 });
 
@@ -419,10 +560,10 @@ export const categoryMeta = {
     shortLabel: "物件",
     eyebrow: "物件档案 / 道具线索库",
     description:
-      "冠饰、相印、密信与声景碎片，皆是封相大典背后的证物。",
+      "冠饰、令牌、密信、官印与声境碎片，皆是封相大典背后的证物。",
     introTitle: "戏曲道具与线索库",
     introText:
-      "即使部分模型仍在入库中，物件档案依然保留其剧情用途、声景提示与视觉设定。",
+      "十三件物件已全部接入缩略图与三维模型，可直接进入展台观察戏曲道具与搜证证物。",
     archiveLabel: "物件与线索"
   }
 };
@@ -455,9 +596,9 @@ export const filterConfigs = {
   ],
   object: [
     {
-      key: "type",
-      label: "物件分类",
-      options: ["全部", "冠饰", "戏服", "令牌", "密信", "相印", "声景碎片", "舞台道具", "封相文书"]
+      key: "primary",
+      label: "物件主筛选",
+      options: ["全部", "关键线索", "隐藏线索", "声境碎片", "文书密信", "权力信物", "戏曲道具"]
     }
   ]
 };
@@ -470,7 +611,7 @@ export const defaultFilters = {
     advancedOpen: false
   },
   object: {
-    type: "全部"
+    primary: "全部"
   }
 };
 

@@ -13,6 +13,13 @@ export function createViewer({
   interactionHint
 }) {
   const isCharacter = exhibit.assetCategory === "character";
+  const isEvidenceObject =
+    !isCharacter &&
+    ["密信", "密函", "数字档案", "声境碎片"].includes(exhibit.objectType);
+  const isDisplayObject =
+    !isCharacter &&
+    ["冠饰", "佩饰", "令牌", "印章"].includes(exhibit.objectType);
+  const isPatternObject = !isCharacter && exhibit.id === "mangpao-buzi-pattern";
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
@@ -151,7 +158,15 @@ export function createViewer({
   let resizeObserver;
   let modelRoot = null;
   let animationState = null;
-  let lightingMode = exhibit.isSuspicious ? "darkline" : "stage";
+  let lightingMode = isCharacter
+    ? exhibit.isSuspicious
+      ? "darkline"
+      : "stage"
+    : isEvidenceObject
+      ? "darkline"
+      : isDisplayObject
+        ? "soft"
+        : "stage";
   let currentView = "front";
   let fadeStart = null;
   let fadeMaterials = [];
@@ -225,8 +240,8 @@ export function createViewer({
     lights.key.intensity = 2.8;
     lights.fill.intensity = 1.55;
     lights.rim.intensity = 2.2;
-    lights.mystery.intensity = exhibit.isSuspicious ? 0.36 : 0;
-    lights.spot.intensity = 5.3;
+      lights.mystery.intensity = exhibit.isSuspicious || isEvidenceObject ? 0.36 : 0;
+      lights.spot.intensity = 5.3;
   }
 
   function setView(mode) {
@@ -265,11 +280,19 @@ export function createViewer({
     const fitWidthDistance =
       (Math.max(reframedSize.x, reframedSize.z) * (isCharacter ? 1.42 : 1.58)) /
       (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)) * camera.aspect);
-    const distance = Math.max(fitHeightDistance, fitWidthDistance, isCharacter ? 2.8 : 2.4);
+    const distance = Math.max(
+      fitHeightDistance,
+      fitWidthDistance,
+      isCharacter ? 2.8 : isPatternObject ? 2.1 : 2.4
+    );
     const centerY = reframedCenter.y + reframedSize.y * (isCharacter ? 0.1 : 0.08);
     const targetY = reframedCenter.y + reframedSize.y * (isCharacter ? 0.05 : 0.02);
 
-    camera.position.set(distance * 0.12, centerY, distance);
+    camera.position.set(
+      isPatternObject ? 0 : distance * 0.12,
+      centerY,
+      distance
+    );
     controls.target.set(0, targetY, 0);
     controls.minDistance = Math.max(0.9, distance * 0.5);
     controls.maxDistance = distance * 2.35;
@@ -288,6 +311,10 @@ export function createViewer({
       centerY,
       targetY
     };
+
+    if (isPatternObject) {
+      object.rotation.y = 0;
+    }
   }
 
   function setAutoRotate(enabled) {
@@ -321,13 +348,17 @@ export function createViewer({
           loadingOverlay.classList.add("hidden");
         }, 180);
       },
-      (event) => {
-        if (!event.total) {
-          setLoadingText("正在为《六国大封相》模型调整灯光、机位与展示姿态。");
-          return;
-        }
-        const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
-        setLoadingText(`模型加载中 ${percent}%`);
+        (event) => {
+          if (!event.total) {
+          setLoadingText(
+            isCharacter
+              ? "正在为《六国大封相》模型调整灯光、机位与展示姿态。"
+              : "正在为物件调整灯光、机位与展示姿态……"
+          );
+            return;
+          }
+          const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+          setLoadingText(`模型加载中 ${percent}%`);
       },
       () => {
         showFallback("展品尚未入库", "模型文件暂未完成，请返回档案库查看其他展品。");
@@ -346,12 +377,15 @@ export function createViewer({
     frameId = window.requestAnimationFrame(animate);
     const elapsed = clock.getElapsedTime();
 
-    if (modelRoot && animationState) {
-      if (!isCharacter) {
-        modelRoot.position.y =
-          animationState.baseY +
-          Math.sin(elapsed * animationState.floatSpeed) * animationState.floatAmplitude;
-      }
+      if (modelRoot && animationState) {
+        if (!isCharacter) {
+          modelRoot.position.y =
+            animationState.baseY +
+            Math.sin(elapsed * animationState.floatSpeed) * animationState.floatAmplitude;
+          if (isPatternObject) {
+            modelRoot.rotation.y = 0;
+          }
+        }
       if (fadeStart) {
         const progress = Math.min(1, (performance.now() - fadeStart) / 680);
         fadeMaterials.forEach((material) => {

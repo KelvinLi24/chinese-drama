@@ -133,7 +133,13 @@ button {
 
 .brand-block h1 {
   font-size: clamp(2rem, 3vw, 2.9rem);
+  line-height: 1.04;
   text-shadow: 0 0 18px rgba(216, 171, 99, 0.14);
+}
+
+.title-break {
+  display: block;
+  margin-top: 0.08em;
 }
 
 .eyebrow {
@@ -206,7 +212,7 @@ button {
 
 .hero-copy h2 {
   font-size: clamp(2.5rem, 5.2vw, 4.5rem);
-  line-height: 1.12;
+  line-height: 1.04;
 }
 
 .hero-subtitle,
@@ -580,6 +586,25 @@ button {
   text-align: left;
 }
 
+.nav-tile strong {
+  display: block;
+  line-height: 1.42;
+  color: #f7efe1;
+  font-weight: 700;
+}
+
+.nav-tile strong .nav-title-break {
+  display: inline;
+  margin-top: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+
+.nav-tile > span:last-child {
+  display: block;
+  line-height: 1.54;
+}
+
 .tile-icon {
   display: inline-flex;
   align-items: center;
@@ -808,6 +833,21 @@ button {
   transform: scale(1.04);
 }
 
+.object-card .asset-media {
+  aspect-ratio: 1 / 1;
+  min-height: 220px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(216, 171, 99, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(68, 18, 20, 0.98), rgba(28, 10, 12, 1));
+}
+
+.object-card .asset-media img,
+.object-card .asset-media video {
+  object-fit: contain;
+  padding: 14px;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.28));
+}
+
 .asset-fallback {
   display: grid;
   place-items: center;
@@ -835,6 +875,14 @@ button {
 .asset-meta h3 {
   font-size: 1.42rem;
   margin-bottom: 10px;
+}
+
+.nav-copy-break {
+  display: block;
+}
+
+.nav-copy-break {
+  margin-top: 0.08em;
 }
 
 .rich-meta {
@@ -1528,5 +1576,9 @@ button {
 
   .stat-pill {
     min-width: calc(50% - 6px);
+  }
+
+  .title-break {
+    margin-top: 0.12em;
   }
 }
