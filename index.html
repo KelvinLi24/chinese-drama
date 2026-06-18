@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>《六国大封相》数字仓库</title>
+    <meta
+      name="description"
+      content="走入粤剧戏棚深处，细看人物行当、冠服道具与封相大典背后的暗线证物。"
+    />
+    <link rel="stylesheet" href="./styles/main.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <button class="ghost-button hidden" id="globalBackButton" type="button">
+          ← 退回戏棚
+        </button>
+        <div class="brand-block">
+          <p class="eyebrow eyebrow-stamp">粤剧数字展陈</p>
+          <h1>《六国大封相》数字仓库</h1>
+        </div>
+      </header>
+
+      <main id="app"></main>
+    </div>
+
+    <template id="home-template">
+      <section class="page page-home">
+        <div class="hero-card">
+          <div class="hero-layout">
+            <div class="hero-copy">
+              <p class="eyebrow">开场戏棚导览</p>
+              <h2>《六国大封相》数字仓库</h2>
+              <p class="hero-subtitle">
+                走入粤剧戏棚深处，细看人物行当、冠服道具与封相大典背后的暗线证物。
+              </p>
+              <p class="hero-quote">
+                锣鼓未歇，六印已悬；盛世封相之下，暗线将启。
+              </p>
+
+              <div class="hero-actions">
+                <button
+                  class="token-button"
+                  data-route="category"
+                  data-category="character"
+                  type="button"
+                >
+                  进入人物馆
+                </button>
+                <button
+                  class="token-button"
+                  data-route="category"
+                  data-category="object"
+                  type="button"
+                >
+                  进入物件馆
+                </button>
+                <button
+                  class="token-button token-button-alt"
+                  data-route="viewer"
+                  data-category="character"
+                  data-name="苏秦"
+                  type="button"
+                >
+                  开启封相展台
+                </button>
+              </div>
+
+              <div class="hero-stats" id="heroStats"></div>
+            </div>
+
+            <div class="hero-stage-preview">
+              <div class="preview-frame">
+                <div class="preview-title">
+                  <span class="eyebrow">封相仪式剪影</span>
+                  <strong>数字戏棚预览</strong>
+                </div>
+                <div class="preview-silhouette">
+                  <div class="preview-drum-wrap">
+                    <div class="preview-drumsticks" aria-hidden="true">
+                      <span class="drumstick drumstick-left"></span>
+                      <span class="drumstick drumstick-right"></span>
+                      <span class="drum-spark drum-spark-left"></span>
+                      <span class="drum-spark drum-spark-right"></span>
+                    </div>
+
+                    <div class="preview-drum-orbit">
+                      <div class="orbit-seal-wrap orbit-seal-wrap-1"><span class="orbit-seal">齐</span></div>
+                      <div class="orbit-seal-wrap orbit-seal-wrap-2"><span class="orbit-seal">楚</span></div>
+                      <div class="orbit-seal-wrap orbit-seal-wrap-3"><span class="orbit-seal">燕</span></div>
+                      <div class="orbit-seal-wrap orbit-seal-wrap-4"><span class="orbit-seal">韩</span></div>
+                      <div class="orbit-seal-wrap orbit-seal-wrap-5"><span class="orbit-seal">赵</span></div>
+                      <div class="orbit-seal-wrap orbit-seal-wrap-6"><span class="orbit-seal">魏</span></div>
+                    </div>
+
+                    <div class="preview-drum">
+                      <div class="preview-drum-rim"></div>
+                      <div class="preview-drum-face">
+                        <div class="hero-preview-loading" id="heroPreviewLoading" aria-live="polite">
+                          <div class="hero-preview-loader">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                          </div>
+                          <p>模型加载中</p>
+                        </div>
+                        <canvas id="heroPreviewCanvas" aria-label="苏秦三维预览"></canvas>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="preview-notes">
+                  <p>封相台上，六国共贺。</p>
+                  <p>戏棚幕后，疑云已起。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="guide-strip">
+            <article class="guide-card">
+              <p class="guide-index">第一幕</p>
+              <h3>开锣 · 粤剧行当</h3>
+              <p>观察人物身段、行当气质与戏服轮廓。</p>
+            </article>
+            <article class="guide-card">
+              <p class="guide-index">第二幕</p>
+              <h3>封相 · 六国朝堂</h3>
+              <p>进入六国诸侯与苏秦的权力棋局。</p>
+            </article>
+            <article class="guide-card">
+              <p class="guide-index">第三幕</p>
+              <h3>暗线 · 搜证推理</h3>
+              <p>从密信、相印、声景碎片中寻找真相。</p>
+            </article>
+          </div>
+
+          <div class="home-entry-grid">
+            <button class="nav-tile" data-route="category" data-category="character" type="button">
+              <span class="tile-icon">人物馆</span>
+              <strong>人物档案 / 行当名册</strong>
+              <span>行当、身段、服饰、角色立场与权谋属性同场展开。</span>
+            </button>
+            <button class="nav-tile" data-route="category" data-category="object" type="button">
+              <span class="tile-icon">物件馆</span>
+              <strong>物件档案 / 道具线索库</strong>
+              <span>冠饰、令牌、密信、相印与声景碎片共同构成搜证空间。</span>
+            </button>
+          </div>
+
+          <section class="scroll-card">
+            <div>
+              <p class="eyebrow">封相卷轴</p>
+              <h3>六国合纵，诸侯同贺；然而相印落下之时，朝堂暗线亦已展开。</h3>
+            </div>
+            <p>
+              这里不是普通资料库，而是一处可进入戏棚后台、朝堂封相与搜证密室的数字展陈入口。
+            </p>
+          </section>
+        </div>
+      </section>
+    </template>
+
+    <template id="category-template">
+      <section class="page page-category">
+        <div class="archive-header">
+          <div class="archive-header-main">
+            <p class="eyebrow" id="categoryEyebrow"></p>
+            <h2 id="categoryTitle"></h2>
+            <p class="section-text" id="categoryDescription"></p>
+          </div>
+          <div class="archive-summary" id="archiveSummary"></div>
+        </div>
+
+        <div class="filter-rack" id="filterRack"></div>
+        <div class="asset-grid" id="assetGrid"></div>
+      </section>
+    </template>
+
+    <template id="viewer-template">
+      <section class="page page-viewer">
+        <div class="intro-screen" id="introScreen">
+          <div class="intro-card">
+            <p class="eyebrow">入台</p>
+            <h2>锣鼓未歇，展台已明。</h2>
+            <p>正在为《六国大封相》模型调整灯光、机位与展示姿态。</p>
+            <button class="primary-button" id="enterViewerButton" type="button">
+              进入展台
+            </button>
+          </div>
+        </div>
+
+        <div class="viewer-layout hidden" id="viewerLayout">
+          <section class="viewer-panel">
+            <div class="viewer-stage-frame">
+              <div class="viewer-toolbar">
+                <div class="toolbar-group">
+                  <span class="toolbar-label">快捷视角</span>
+                  <button class="mini-token is-active" data-view="front" type="button">正面</button>
+                  <button class="mini-token" data-view="side" type="button">侧面</button>
+                  <button class="mini-token" data-view="back" type="button">背面</button>
+                  <button class="mini-token" data-view="reset" type="button">重置</button>
+                </div>
+                <div class="toolbar-group">
+                  <span class="toolbar-label">灯光模式</span>
+                  <button class="mini-token" data-lighting="soft" type="button">柔和</button>
+                  <button class="mini-token is-active" data-lighting="stage" type="button">戏台</button>
+                  <button class="mini-token" data-lighting="darkline" type="button">暗线</button>
+                </div>
+                <div class="toolbar-group">
+                  <span class="toolbar-label">展台状态</span>
+                  <button class="mini-token" id="autoRotateButton" data-toggle-rotate type="button">
+                    慢速自转：开启
+                  </button>
+                </div>
+              </div>
+
+              <div class="viewer-stage">
+                <canvas id="viewerCanvas" aria-label="三维展示台"></canvas>
+
+                <div class="loading-overlay" id="loadingOverlay">
+                  <div class="loading-card">
+                    <div class="ring-loader">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                    <p class="loading-title">锣鼓未歇，展台已明。</p>
+                    <p class="loading-progress" id="loadingProgress">
+                      正在为《六国大封相》模型调整灯光、机位与展示姿态。
+                    </p>
+                  </div>
+                </div>
+
+                <div class="error-overlay hidden" id="errorOverlay">
+                  <div class="error-card">
+                    <h3 id="errorTitle">展品尚未入库</h3>
+                    <p id="errorMessage">模型文件暂未完成，请返回档案库查看其他展品。</p>
+                    <button class="primary-button" id="errorBackButton" type="button">
+                      退回档案库
+                    </button>
+                  </div>
+                </div>
+
+                <div class="interaction-hint" id="interactionHint">
+                  拖动旋转 / 双指或滚轮缩放
+                </div>
+                <div class="stage-observe-hint" id="viewerObserveHint"></div>
+              </div>
+            </div>
+
+            <div class="soundscape-bar">
+              <div class="soundscape-main">
+                <p class="eyebrow">当前声景</p>
+                <strong id="soundscapeScene">封相大典</strong>
+                <span id="soundscapeTags">锣鼓点 · 朝堂回声 · 戏棚环境声</span>
+              </div>
+              <div class="soundscape-wave" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <div class="soundscape-status">
+                <span>声景状态</span>
+                <strong id="soundscapeStatus">静音预留</strong>
+              </div>
+            </div>
+          </section>
+
+          <aside class="info-panel" id="infoPanel"></aside>
+        </div>
+      </section>
+    </template>
+
+    <script type="module" src="./scripts/app.js"></script>
+  </body>
+</html>
