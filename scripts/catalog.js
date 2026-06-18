@@ -23,7 +23,11 @@ const characterAssetMap = {
 };
 
 const objectAssetMap = {
-  凤冠: { imagePath: "./assets/object/凤冠.png", modelPath: "./assets/object/凤冠.glb" }
+  凤冠: {
+    imagePath: "./assets/object/凤冠.png",
+    previewVideoPath: "./assets/object/凤冠.mp4",
+    modelPath: "./assets/object/凤冠.glb"
+  }
 };
 
 export const characterExhibits = [
@@ -391,6 +395,7 @@ export const objectExhibits = [
     ...exhibit,
     assetCategory: "object",
     imagePath: assets.imagePath ?? "",
+    previewVideoPath: assets.previewVideoPath ?? "",
     modelPath: assets.modelPath ?? "",
     hasModel: Boolean(assets.modelPath),
     archiveState: assets.modelPath ? "已入库" : "模型待入库"

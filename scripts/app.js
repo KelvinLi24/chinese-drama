@@ -223,6 +223,23 @@ function buildStamp(text, className = "") {
 function buildCardMedia(exhibit) {
   const media = document.createElement("div");
   media.className = "asset-media";
+
+  if (exhibit.previewVideoPath) {
+    const video = document.createElement("video");
+    video.src = exhibit.previewVideoPath;
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.setAttribute("aria-label", `${exhibit.name} 预览视频`);
+    video.onerror = () => {
+      media.innerHTML = `<div class="asset-fallback">${exhibit.name}</div>`;
+    };
+    media.appendChild(video);
+    return media;
+  }
+
   if (exhibit.imagePath) {
     const image = document.createElement("img");
     image.src = exhibit.imagePath;
