@@ -1,13 +1,11 @@
 import {
   categoryMeta,
-  characterExhibits,
   defaultFilters,
   filterConfigs,
   getExhibit,
   getExhibits,
   getFeaturedExhibit,
-  getHomeStats,
-  objectExhibits
+  getHomeStats
 } from "./catalog.js";
 import { createHeroPreview } from "./previewStage.js";
 import { createViewer } from "./viewer.js";
@@ -71,8 +69,9 @@ function renderHome() {
   const heroStats = document.querySelector("#heroStats");
   heroStats.append(
     buildHomeStat("人物档案", stats.characterCount),
-    buildHomeStat("物件线索", stats.objectCount),
-    buildHomeStat("可查看模型", stats.readyModels)
+    buildHomeStat("物件档案", stats.objectCount),
+    buildHomeStat("场景档案", stats.sceneCount),
+    buildHomeStat("已接入模型", stats.readyModels)
   );
 
   const heroPreviewCanvas = document.querySelector("#heroPreviewCanvas");
@@ -95,40 +94,48 @@ function createFilterButton(groupKey, value, activeValue) {
   return button;
 }
 
+function renderPrimaryFilterSection(category, clearActionDataAttr) {
+  const primarySection = document.createElement("section");
+  primarySection.className = "filter-group filter-group-primary";
+
+  const primaryBar = document.createElement("div");
+  primaryBar.className = "primary-filter-bar";
+
+  const chips = document.createElement("div");
+  chips.className = "filter-chips filter-chips-primary";
+  chips.dataset.scrollKey = `${category}-primary`;
+  filterConfigs[category][0].options
+    .map((option) => createFilterButton("primary", option, pageState.filters[category].primary))
+    .forEach((button) => chips.appendChild(button));
+
+  const actions = document.createElement("div");
+  actions.className = "filter-actions";
+
+  if (category === "character") {
+    actions.innerHTML += `
+      <button class="filter-action-button" type="button" data-toggle-advanced>
+        ${pageState.filters.character.advancedOpen ? "收起进阶筛选" : "进阶筛选"}
+      </button>
+    `;
+  }
+
+  actions.innerHTML += `
+    <button class="filter-action-button" type="button" ${clearActionDataAttr}>
+      清除筛选
+    </button>
+  `;
+
+  primaryBar.append(chips, actions);
+  primarySection.appendChild(primaryBar);
+  return primarySection;
+}
+
 function renderFilters(category) {
   const rack = document.querySelector("#filterRack");
   rack.innerHTML = "";
 
   if (category === "character") {
-    const primarySection = document.createElement("section");
-    primarySection.className = "filter-group filter-group-primary";
-
-    const primaryBar = document.createElement("div");
-    primaryBar.className = "primary-filter-bar";
-
-    const chips = document.createElement("div");
-    chips.className = "filter-chips filter-chips-primary";
-    chips.dataset.scrollKey = "character-primary";
-    filterConfigs.character[0].options
-      .map((option) =>
-        createFilterButton("primary", option, pageState.filters.character.primary)
-      )
-      .forEach((button) => chips.appendChild(button));
-
-    const actions = document.createElement("div");
-    actions.className = "filter-actions";
-    actions.innerHTML = `
-      <button class="filter-action-button" type="button" data-toggle-advanced>
-        ${pageState.filters.character.advancedOpen ? "收起进阶筛选" : "进阶筛选"}
-      </button>
-      <button class="filter-action-button" type="button" data-clear-character-filters>
-        清除筛选
-      </button>
-    `;
-
-    primaryBar.append(chips, actions);
-    primarySection.appendChild(primaryBar);
-    rack.appendChild(primarySection);
+    rack.appendChild(renderPrimaryFilterSection("character", "data-clear-character-filters"));
 
     if (pageState.filters.character.advancedOpen) {
       filterConfigs.character.slice(1).forEach((group) => {
@@ -139,73 +146,31 @@ function renderFilters(category) {
         label.className = "filter-label";
         label.textContent = group.label;
 
-        const advChips = document.createElement("div");
-        advChips.className = "filter-chips";
-        advChips.dataset.scrollKey = `character-${group.key}`;
+        const chips = document.createElement("div");
+        chips.className = "filter-chips";
+        chips.dataset.scrollKey = `character-${group.key}`;
         group.options
           .map((option) =>
             createFilterButton(group.key, option, pageState.filters.character[group.key])
           )
-          .forEach((button) => advChips.appendChild(button));
+          .forEach((button) => chips.appendChild(button));
 
-        section.append(label, advChips);
+        section.append(label, chips);
         rack.appendChild(section);
       });
     }
+
     restoreFilterScrollPositions();
     return;
   }
 
   if (category === "object") {
-    const primarySection = document.createElement("section");
-    primarySection.className = "filter-group filter-group-primary";
-
-    const primaryBar = document.createElement("div");
-    primaryBar.className = "primary-filter-bar";
-
-    const chips = document.createElement("div");
-    chips.className = "filter-chips filter-chips-primary";
-    chips.dataset.scrollKey = "object-primary";
-    filterConfigs.object[0].options
-      .map((option) =>
-        createFilterButton("primary", option, pageState.filters.object.primary)
-      )
-      .forEach((button) => chips.appendChild(button));
-
-    const actions = document.createElement("div");
-    actions.className = "filter-actions";
-    actions.innerHTML = `
-      <button class="filter-action-button" type="button" data-clear-object-filters>
-        清除筛选
-      </button>
-    `;
-
-    primaryBar.append(chips, actions);
-    primarySection.appendChild(primaryBar);
-    rack.appendChild(primarySection);
+    rack.appendChild(renderPrimaryFilterSection("object", "data-clear-object-filters"));
     restoreFilterScrollPositions();
     return;
   }
 
-  filterConfigs[category].forEach((group) => {
-    const section = document.createElement("section");
-    section.className = "filter-group";
-
-    const label = document.createElement("span");
-    label.className = "filter-label";
-    label.textContent = group.label;
-
-    const chips = document.createElement("div");
-    chips.className = "filter-chips";
-    group.options
-      .map((option) =>
-        createFilterButton(group.key, option, pageState.filters[category][group.key])
-      )
-      .forEach((button) => chips.appendChild(button));
-
-    section.append(label, chips);
-    rack.appendChild(section);
-  });
+  rack.appendChild(renderPrimaryFilterSection("scene", "data-clear-scene-filters"));
   restoreFilterScrollPositions();
 }
 
@@ -227,7 +192,9 @@ function restoreFilterScrollPositions() {
 function matchCharacter(exhibit, filters) {
   if (filters.primary !== "全部" && !exhibit.primaryTags.includes(filters.primary)) return false;
   if (filters.camp !== "全部" && exhibit.camp !== filters.camp) return false;
-  if (filters.operaRef !== "全部" && !exhibit.operaTags.includes(filters.operaRef)) return false;
+  if (filters.operaRef !== "全部") {
+    if (!exhibit.operaTags.some((tag) => tag.includes(filters.operaRef))) return false;
+  }
   return true;
 }
 
@@ -248,12 +215,19 @@ function matchObject(exhibit, filters) {
   return true;
 }
 
+function matchScene(exhibit, filters) {
+  return filters.primary === "全部" || exhibit.sceneGroup === filters.primary;
+}
+
 function getFilteredExhibits(category) {
   const exhibits = getExhibits(category);
   const filters = pageState.filters[category];
-  return exhibits.filter((exhibit) =>
-    category === "character" ? matchCharacter(exhibit, filters) : matchObject(exhibit, filters)
-  );
+
+  return exhibits.filter((exhibit) => {
+    if (category === "character") return matchCharacter(exhibit, filters);
+    if (category === "object") return matchObject(exhibit, filters);
+    return matchScene(exhibit, filters);
+  });
 }
 
 function buildStamp(text, className = "") {
@@ -266,6 +240,23 @@ function buildStamp(text, className = "") {
 function buildCardMedia(exhibit) {
   const media = document.createElement("div");
   media.className = "asset-media";
+
+  if (exhibit.videoPath) {
+    const video = document.createElement("video");
+    video.src = exhibit.videoPath;
+    video.autoplay = true;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.setAttribute("aria-label", `${exhibit.name} 预览视频`);
+    video.onerror = () => {
+      media.innerHTML = `<div class="asset-fallback">${exhibit.name}</div>`;
+    };
+    media.appendChild(video);
+    return media;
+  }
+
   if (exhibit.imagePath) {
     const image = document.createElement("img");
     image.src = exhibit.imagePath;
@@ -275,9 +266,10 @@ function buildCardMedia(exhibit) {
       media.innerHTML = `<div class="asset-fallback">${exhibit.name}</div>`;
     };
     media.appendChild(image);
-  } else {
-    media.innerHTML = `<div class="asset-fallback">${exhibit.name}</div>`;
+    return media;
   }
+
+  media.innerHTML = `<div class="asset-fallback">${exhibit.name}</div>`;
   return media;
 }
 
@@ -324,9 +316,7 @@ function buildCharacterCard(exhibit) {
 
 function buildObjectCard(exhibit) {
   const button = document.createElement("button");
-  button.className = `asset-card archive-card object-card${
-    exhibit.hasModel ? " is-ready" : " is-coming-soon"
-  }`;
+  button.className = "asset-card archive-card object-card is-ready";
   button.type = "button";
   button.dataset.route = "viewer";
   button.dataset.category = "object";
@@ -335,10 +325,7 @@ function buildObjectCard(exhibit) {
   const head = document.createElement("div");
   head.className = "card-head";
   head.append(buildStamp(exhibit.objectType, "camp-stamp"));
-  head.append(buildStamp(exhibit.clueLevel.includes("关键") ? "关键线索" : exhibit.clueLevel));
-  if (!exhibit.hasModel) {
-    head.append(buildStamp("待入库", "stamp-waiting"));
-  }
+  head.append(buildStamp(exhibit.clueLevel));
 
   const meta = document.createElement("div");
   meta.className = "asset-meta rich-meta";
@@ -362,20 +349,56 @@ function buildObjectCard(exhibit) {
   return button;
 }
 
+function buildSceneCard(exhibit) {
+  const button = document.createElement("button");
+  button.className = "asset-card archive-card scene-card is-ready";
+  button.type = "button";
+  button.dataset.route = "viewer";
+  button.dataset.category = "scene";
+  button.dataset.name = exhibit.name;
+
+  const head = document.createElement("div");
+  head.className = "card-head";
+  head.append(buildStamp(exhibit.sceneGroup, "camp-stamp"));
+  head.append(buildStamp(exhibit.sceneType, "stamp-key"));
+
+  const meta = document.createElement("div");
+  meta.className = "asset-meta rich-meta";
+  meta.innerHTML = `
+    <p class="asset-category">场景</p>
+    <h3>${exhibit.name}</h3>
+    <div class="meta-grid">
+      <span><b>叙事定位</b>${exhibit.role}</span>
+    </div>
+    <blockquote class="character-quote">${exhibit.description}</blockquote>
+    <div class="sound-tags">
+      ${exhibit.soundscape.slice(0, 3).map((tag) => `<span>${tag}</span>`).join("")}
+    </div>
+    <div class="card-footer">
+      <span class="archive-state">${exhibit.archiveState}</span>
+      <span class="cta-text">进入场景</span>
+    </div>
+  `;
+
+  button.append(head, buildCardMedia(exhibit), meta);
+  return button;
+}
+
 function renderArchiveSummary(category, items) {
   const summary = document.querySelector("#archiveSummary");
+  const totalCount = getExhibits(category).length;
   const readyCount = items.filter((item) => item.hasModel).length;
+  const kindLabel = category === "character" ? "人物档案" : category === "object" ? "物件档案" : "场景档案";
   const resultLabel =
-    category === "character"
-      ? `${items.length === characterExhibits.length ? "共" : "已筛选"} ${items.length} 件人物档案`
-      : `${items.length === objectExhibits.length ? "共" : "已筛选"} ${items.length} 件物件档案`;
+    items.length === totalCount ? `共 ${items.length} 件${kindLabel}` : `已筛选 ${items.length} 件`;
+
   summary.innerHTML = `
     <div class="summary-card">
-      <p class="eyebrow">展陈概览</p>
+      <p class="eyebrow">浏览统计</p>
       <strong>${categoryMeta[category].archiveLabel}</strong>
       <div class="summary-stats">
         <span>${resultLabel}</span>
-        <span>模型可用：${readyCount}</span>
+        <span>模型就绪 ${readyCount}</span>
       </div>
       <p>${categoryMeta[category].introText}</p>
     </div>
@@ -393,15 +416,19 @@ function renderArchiveGrid(category) {
     const empty = document.createElement("article");
     empty.className = "empty-state";
     empty.innerHTML = `
-      <h3>暂无匹配档案</h3>
-      <p>可以切换筛选条件，查看更多人物或物件线索。</p>
+      <h3>当前筛选下暂无结果</h3>
+      <p>你可以清除筛选，或切换到其他馆别继续浏览。</p>
     `;
     grid.appendChild(empty);
     return;
   }
 
   items
-    .map((item) => (category === "character" ? buildCharacterCard(item) : buildObjectCard(item)))
+    .map((item) => {
+      if (category === "character") return buildCharacterCard(item);
+      if (category === "object") return buildObjectCard(item);
+      return buildSceneCard(item);
+    })
     .forEach((card) => grid.appendChild(card));
 }
 
@@ -427,9 +454,31 @@ function createMiniInfoCard(label, value) {
   return `<div class="info-mini-card"><span>${label}</span><strong>${value}</strong></div>`;
 }
 
+function buildSceneHotspots(hotspots = []) {
+  if (!hotspots.length) return "";
+  return `
+    <div class="info-block">
+      <h3 class="info-block-title">热点导览</h3>
+      <div class="scene-hotspot-list">
+        ${hotspots
+          .map(
+            (hotspot) => `
+              <div class="scene-hotspot-item">
+                <strong>${hotspot.label}</strong>
+                <span>${hotspot.description}</span>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
 function buildInfoPanel(exhibit) {
   const soundTags = exhibit.soundscape.map((tag) => `<span>${tag}</span>`).join("");
-  if (exhibit.category === "人物") {
+
+  if (exhibit.assetCategory === "character") {
     return `
       <article class="info-card">
         <div class="info-head">
@@ -448,15 +497,11 @@ function buildInfoPanel(exhibit) {
           ${createMiniInfoCard("线索层级", exhibit.clueLevel)}
         </div>
 
-        <blockquote class="info-quote">「${exhibit.quote}」</blockquote>
+        <blockquote class="info-quote">“${exhibit.quote}”</blockquote>
 
         <div class="info-block">
           <h3 class="info-block-title">观看提示</h3>
-          <p>${
-            exhibit.hasModel
-              ? "拖动旋转、滚轮缩放，可切换视角与灯光。"
-              : "当前仅提供档案信息与待入库提示。"
-          }</p>
+          <p>拖动旋转、滚轮缩放，可切换视角与灯光。</p>
         </div>
 
         <div class="info-block">
@@ -477,7 +522,6 @@ function buildInfoPanel(exhibit) {
         <details class="info-section info-section-more">
           <summary>展开更多</summary>
           <div class="info-group">
-            ${createInfoRow("类别", exhibit.category)}
             ${createInfoRow("剧情阶段", exhibit.stage)}
             ${createInfoRow("角色立场", exhibit.stance)}
             ${createInfoRow("所属剧目", "粤剧《六国大封相》")}
@@ -487,16 +531,17 @@ function buildInfoPanel(exhibit) {
     `;
   }
 
-  return `
-    <article class="info-card">
-      <div class="info-head">
-        <div>
-          <p class="eyebrow">物件档案</p>
-          <h2>${exhibit.name}</h2>
-          <p class="info-subtitle">${exhibit.role}</p>
+  if (exhibit.assetCategory === "object") {
+    return `
+      <article class="info-card">
+        <div class="info-head">
+          <div>
+            <p class="eyebrow">物件档案</p>
+            <h2>${exhibit.name}</h2>
+            <p class="info-subtitle">${exhibit.role}</p>
+          </div>
+          <span class="status-badge">${exhibit.objectType}</span>
         </div>
-        <span class="status-badge">${exhibit.objectType}</span>
-      </div>
 
         <div class="info-core-grid">
           ${createMiniInfoCard("类型", exhibit.objectType)}
@@ -505,20 +550,76 @@ function buildInfoPanel(exhibit) {
           ${createMiniInfoCard("展示定位", exhibit.role.split(" / ")[0])}
         </div>
 
-      <blockquote class="info-quote">「${exhibit.quote}」</blockquote>
+        <blockquote class="info-quote">“${exhibit.quote}”</blockquote>
 
         <div class="info-block">
           <h3 class="info-block-title">观看提示</h3>
-          <p>${
-            exhibit.hasModel
-              ? "物件悬浮于展示座上方，可拖动旋转、滚轮缩放，观察细节。"
-              : "当前仅提供物件档案信息，模型仍在入库中。"
-          }</p>
+          <p>物件悬浮于展示座上方，进入页面后缓慢旋转，可拖动继续观察。</p>
+        </div>
+
+        <div class="info-block">
+          <h3 class="info-block-title">观察重点</h3>
+          <p>${exhibit.description}</p>
+        </div>
+
+        <div class="info-block info-block-tags">
+          <h3 class="info-block-title">声景</h3>
+          <div class="sound-tags sound-tags-panel">${soundTags}</div>
+        </div>
+
+        <div class="info-block">
+          <h3 class="info-block-title">剧情象征</h3>
+          <p>${exhibit.symbolism}</p>
+        </div>
+
+        <details class="info-section info-section-more">
+          <summary>展开更多</summary>
+          <div class="info-group">
+            ${createInfoRow("声景来源", exhibit.soundscapeScene)}
+            ${createInfoRow("所属剧目", "粤剧《六国大封相》")}
+          </div>
+        </details>
+      </article>
+    `;
+  }
+
+  const controlSummary = [
+    exhibit.controls.canOrbit ? "可旋转" : "",
+    exhibit.controls.canPan ? "可平移" : "",
+    exhibit.controls.canZoom ? "可缩放" : "",
+    exhibit.controls.canEnterScene ? "可漫游" : ""
+  ]
+    .filter(Boolean)
+    .join(" / ");
+
+  return `
+    <article class="info-card">
+      <div class="info-head">
+        <div>
+          <p class="eyebrow">场景档案</p>
+          <h2>${exhibit.name}</h2>
+          <p class="info-subtitle">${exhibit.role}</p>
+        </div>
+        <span class="status-badge">${exhibit.sceneType}</span>
+      </div>
+
+      <div class="info-core-grid">
+        ${createMiniInfoCard("场景分组", exhibit.sceneGroup)}
+        ${createMiniInfoCard("交互模式", exhibit.controls.mode)}
+        ${createMiniInfoCard("热点数量", `${exhibit.hotspots.length} 处`)}
+        ${createMiniInfoCard("视距范围", `${exhibit.controls.minDistance} - ${exhibit.controls.maxDistance}`)}
+      </div>
+
+      <blockquote class="info-quote">${exhibit.description}</blockquote>
+
+      <div class="info-block">
+        <h3 class="info-block-title">观看提示</h3>
+        <p>拖动旋转、平移与缩放，可在场景中自由浏览重点区域。</p>
       </div>
 
       <div class="info-block">
-        <h3 class="info-block-title">观察重点</h3>
-        <p>${exhibit.description}</p>
+        <h3 class="info-block-title">浏览方式</h3>
+        <p>${controlSummary}</p>
       </div>
 
       <div class="info-block info-block-tags">
@@ -526,19 +627,17 @@ function buildInfoPanel(exhibit) {
         <div class="sound-tags sound-tags-panel">${soundTags}</div>
       </div>
 
-      <div class="info-block">
-        <h3 class="info-block-title">剧情象征</h3>
-        <p>${exhibit.symbolism}</p>
-      </div>
+      ${buildSceneHotspots(exhibit.hotspots)}
 
-        <details class="info-section info-section-more">
-          <summary>展开更多</summary>
-          <div class="info-group">
-          ${createInfoRow("档案备注", "该物件已接入缩略图与三维模型，可用于展陈浏览与线索讲解。")}
-          ${createInfoRow("声景场域", exhibit.soundscapeScene)}
-          </div>
-        </details>
-      </article>
+      <details class="info-section info-section-more">
+        <summary>展开更多</summary>
+        <div class="info-group">
+          ${createInfoRow("俯仰限制", `${exhibit.controls.minPolarAngle.toFixed(2)} - ${exhibit.controls.maxPolarAngle.toFixed(2)}`)}
+          ${createInfoRow("阻尼系数", `${exhibit.controls.dampingFactor}`)}
+          ${createInfoRow("所属剧目", "粤剧《六国大封相》")}
+        </div>
+      </details>
+    </article>
   `;
 }
 
@@ -552,17 +651,39 @@ function syncViewerControlState() {
   });
   const rotateButton = document.querySelector("#autoRotateButton");
   if (rotateButton) {
-    rotateButton.textContent = `慢速自转：${viewerInstance.getAutoRotate() ? "开启" : "关闭"}`;
+    rotateButton.textContent = `自动旋转：${viewerInstance.getAutoRotate() ? "开" : "关"}`;
   }
 }
 
 function applyViewerCopy(exhibit) {
   document.querySelector("#infoPanel").innerHTML = buildInfoPanel(exhibit);
   document.querySelector("#soundscapeScene").textContent = exhibit.soundscapeScene;
-  document.querySelector("#soundscapeTags").textContent = exhibit.soundscape.join(" · ");
-  document.querySelector("#soundscapeStatus").textContent = exhibit.hasModel
-    ? "静音预留"
-    : "档案模式";
+  document.querySelector("#soundscapeTags").textContent = exhibit.soundscape.join(" ／ ");
+  document.querySelector("#soundscapeStatus").textContent = exhibit.hasModel ? "可进入" : "未接入";
+}
+
+function getIntroCopy(exhibit) {
+  if (exhibit.assetCategory === "scene") {
+    return {
+      eyebrow: "场景档案",
+      title: `${exhibit.name} 已开启`,
+      text: "三维空间已就绪，进入后可直接浏览戏台结构、朝堂动线与热点区域。"
+    };
+  }
+
+  if (exhibit.assetCategory === "object") {
+    return {
+      eyebrow: "物件档案",
+      title: `${exhibit.name} 展台已开启`,
+      text: "展示灯光、机位与悬浮展台已准备完成，轻触进入物件细观模式。"
+    };
+  }
+
+  return {
+    eyebrow: "人物档案",
+    title: `${exhibit.name} 展台已开启`,
+    text: "角色灯光与机位已经就绪，进入后可旋转观看服饰、身段与冠服层次。"
+  };
 }
 
 function renderViewer(category, name) {
@@ -575,6 +696,17 @@ function renderViewer(category, name) {
   globalBackButton.classList.remove("hidden");
   applyViewerCopy(exhibit);
 
+  const introCopy = getIntroCopy(exhibit);
+  document.querySelector("#introEyebrow").textContent = introCopy.eyebrow;
+  document.querySelector("#introTitle").textContent = introCopy.title;
+  document.querySelector("#introText").textContent = introCopy.text;
+
+  const interactionHint = document.querySelector("#interactionHint");
+  interactionHint.textContent =
+    exhibit.assetCategory === "scene"
+      ? "拖动旋转、平移与缩放，可漫游场景重点。"
+      : "拖动旋转、滚轮缩放，松手后将继续缓慢旋转。";
+
   const introScreen = document.querySelector("#introScreen");
   const viewerLayout = document.querySelector("#viewerLayout");
   const enterButton = document.querySelector("#enterViewerButton");
@@ -584,9 +716,15 @@ function renderViewer(category, name) {
   const errorMessage = document.querySelector("#errorMessage");
   let hasEntered = false;
 
-  if (exhibit.category === "物件") {
+  if (exhibit.assetCategory === "scene") {
+    loadingProgress.textContent = "正在载入 3D 场景，并校准机位、灯光与可漫游范围……";
+    errorMessage.textContent = "场景模型暂未就绪，请返回场景馆查看其他档案。";
+  } else if (exhibit.assetCategory === "object") {
     loadingProgress.textContent = "正在为物件调整灯光、机位与展示姿态……";
-    errorMessage.textContent = "模型文件暂未完成，请返回物件档案查看其他展品。";
+    errorMessage.textContent = "物件模型暂未就绪，请返回物件馆查看其他档案。";
+  } else {
+    loadingProgress.textContent = "正在为人物调整灯光、机位与展示姿态……";
+    errorMessage.textContent = "人物模型暂未就绪，请返回人物馆查看其他档案。";
   }
 
   errorBackButton.addEventListener("click", () => {
@@ -596,6 +734,7 @@ function renderViewer(category, name) {
   const enterViewer = () => {
     if (hasEntered) return;
     hasEntered = true;
+
     if (introTimeoutId) {
       window.clearTimeout(introTimeoutId);
       introTimeoutId = null;
@@ -613,14 +752,14 @@ function renderViewer(category, name) {
         errorOverlay: document.querySelector("#errorOverlay"),
         errorTitle: document.querySelector("#errorTitle"),
         errorMessage: document.querySelector("#errorMessage"),
-        interactionHint: document.querySelector("#interactionHint")
+        interactionHint
       });
       syncViewerControlState();
     }, 420);
   };
 
   enterButton.addEventListener("click", enterViewer, { once: true });
-  introTimeoutId = window.setTimeout(enterViewer, 1800);
+  introTimeoutId = window.setTimeout(enterViewer, 1500);
 }
 
 function renderRoute() {
@@ -681,6 +820,14 @@ document.body.addEventListener("click", (event) => {
     pageState.filters.object = structuredClone(defaultFilters.object);
     renderFilters("object");
     renderArchiveGrid("object");
+    return;
+  }
+
+  if (event.target.closest("[data-clear-scene-filters]")) {
+    saveFilterScrollPosition(event.target);
+    pageState.filters.scene = structuredClone(defaultFilters.scene);
+    renderFilters("scene");
+    renderArchiveGrid("scene");
     return;
   }
 

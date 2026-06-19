@@ -1,80 +1,60 @@
+const assetPath = (folder, name, extension) => `./assets/${folder}/${name}.${extension}`;
+
 const characterAssetMap = {
-  NPC: { imagePath: "./assets/character/NPC.png", modelPath: "./assets/character/NPC.glb" },
-  苏秦: { imagePath: "./assets/character/苏秦.png", modelPath: "./assets/character/苏秦.glb" },
-  楚惠王: { imagePath: "./assets/character/楚惠王.png", modelPath: "./assets/character/楚惠王.glb" },
-  齐庄王: { imagePath: "./assets/character/齐庄王.png", modelPath: "./assets/character/齐庄王.glb" },
-  梁惠王: { imagePath: "./assets/character/梁惠王.png", modelPath: "./assets/character/梁惠王.glb" },
-  公孙衍: { imagePath: "./assets/character/公孙衍.png", modelPath: "./assets/character/公孙衍.glb" },
-  赵国诸侯: { imagePath: "./assets/character/赵国诸侯.png", modelPath: "./assets/character/赵国诸侯.glb" },
-  韩国诸侯: { imagePath: "./assets/character/韩国诸侯.png", modelPath: "./assets/character/韩国诸侯.glb" },
-  燕国诸侯: { imagePath: "./assets/character/燕国诸侯.png", modelPath: "./assets/character/燕国诸侯.glb" },
+  NPC: { imagePath: assetPath("character", "NPC", "png"), modelPath: assetPath("character", "NPC", "glb") },
+  苏秦: { imagePath: assetPath("character", "苏秦", "png"), modelPath: assetPath("character", "苏秦", "glb") },
+  楚惠王: { imagePath: assetPath("character", "楚惠王", "png"), modelPath: assetPath("character", "楚惠王", "glb") },
+  齐庄王: { imagePath: assetPath("character", "齐庄王", "png"), modelPath: assetPath("character", "齐庄王", "glb") },
+  梁惠王: { imagePath: assetPath("character", "梁惠王", "png"), modelPath: assetPath("character", "梁惠王", "glb") },
+  公孙衍: { imagePath: assetPath("character", "公孙衍", "png"), modelPath: assetPath("character", "公孙衍", "glb") },
+  赵国诸侯: { imagePath: assetPath("character", "赵国诸侯", "png"), modelPath: assetPath("character", "赵国诸侯", "glb") },
+  韩国诸侯: { imagePath: assetPath("character", "韩国诸侯", "png"), modelPath: assetPath("character", "韩国诸侯", "glb") },
+  燕国诸侯: { imagePath: assetPath("character", "燕国诸侯", "png"), modelPath: assetPath("character", "燕国诸侯", "glb") },
   通用六国文官: {
-    imagePath: "./assets/character/通用六国文官.png",
-    modelPath: "./assets/character/通用六国文官.glb"
+    imagePath: assetPath("character", "通用六国文官", "png"),
+    modelPath: assetPath("character", "通用六国文官", "glb")
   },
-  通用侍卫: {
-    imagePath: "./assets/character/通用侍卫.png",
-    modelPath: "./assets/character/通用侍卫.glb"
-  },
-  粤剧伶人: {
-    imagePath: "./assets/character/粤剧伶人.png",
-    modelPath: "./assets/character/粤剧伶人.glb"
-  }
+  通用侍卫: { imagePath: assetPath("character", "通用侍卫", "png"), modelPath: assetPath("character", "通用侍卫", "glb") },
+  粤剧伶人: { imagePath: assetPath("character", "粤剧伶人", "png"), modelPath: assetPath("character", "粤剧伶人", "glb") }
 };
 
 const objectAssetMap = {
-  小型线索木匣: {
-    imagePath: "./assets/object/小型线索木匣.png",
-    modelPath: "./assets/object/小型线索木匣.glb"
-  },
-  六国封相令牌: {
-    imagePath: "./assets/object/六国封相令牌.png",
-    modelPath: "./assets/object/六国封相令牌.glb"
-  },
+  小型线索木匣: { imagePath: assetPath("object", "小型线索木匣", "png"), modelPath: assetPath("object", "小型线索木匣", "glb") },
+  六国封相令牌: { imagePath: assetPath("object", "六国封相令牌", "png"), modelPath: assetPath("object", "六国封相令牌", "glb") },
   凤冠: {
-    imagePath: "./assets/object/凤冠.png",
-    modelPath: "./assets/object/凤冠.glb"
+    imagePath: assetPath("object", "凤冠", "png"),
+    modelPath: assetPath("object", "凤冠", "glb"),
+    videoPath: assetPath("object", "凤冠", "mp4")
   },
-  丞相玉佩: {
-    imagePath: "./assets/object/丞相玉佩.png",
-    modelPath: "./assets/object/丞相玉佩.glb"
-  },
+  丞相玉佩: { imagePath: assetPath("object", "丞相玉佩", "png"), modelPath: assetPath("object", "丞相玉佩", "glb") },
   "声境碎片-唱腔记忆片": {
-    imagePath: "./assets/object/声境碎片-唱腔记忆片.png",
-    modelPath: "./assets/object/声境碎片-唱腔记忆片.glb"
+    imagePath: assetPath("object", "声境碎片-唱腔记忆片", "png"),
+    modelPath: assetPath("object", "声境碎片-唱腔记忆片", "glb")
   },
   "声境碎片-锣鼓记忆晶片": {
-    imagePath: "./assets/object/声境碎片-锣鼓记忆晶片.png",
-    modelPath: "./assets/object/声境碎片-锣鼓记忆晶片.glb"
+    imagePath: assetPath("object", "声境碎片-锣鼓记忆晶片", "png"),
+    modelPath: assetPath("object", "声境碎片-锣鼓记忆晶片", "glb")
   },
-  官印: {
-    imagePath: "./assets/object/官印.png",
-    modelPath: "./assets/object/官印.glb"
-  },
-  封蜡密函: {
-    imagePath: "./assets/object/封蜡密函.png",
-    modelPath: "./assets/object/封蜡密函.glb"
-  },
-  战国密信: {
-    imagePath: "./assets/object/战国密信.png",
-    modelPath: "./assets/object/战国密信.glb"
-  },
-  粤剧折扇: {
-    imagePath: "./assets/object/粤剧折扇.png",
-    modelPath: "./assets/object/粤剧折扇.glb"
-  },
-  数字档案碎片: {
-    imagePath: "./assets/object/数字档案碎片.png",
-    modelPath: "./assets/object/数字档案碎片.glb"
-  },
-  舞台机关钥匙: {
-    imagePath: "./assets/object/舞台机关钥匙.png",
-    modelPath: "./assets/object/舞台机关钥匙.glb"
-  },
+  官印: { imagePath: assetPath("object", "官印", "png"), modelPath: assetPath("object", "官印", "glb") },
+  封蜡密函: { imagePath: assetPath("object", "封蜡密函", "png"), modelPath: assetPath("object", "封蜡密函", "glb") },
+  战国密信: { imagePath: assetPath("object", "战国密信", "png"), modelPath: assetPath("object", "战国密信", "glb") },
+  粤剧折扇: { imagePath: assetPath("object", "粤剧折扇", "png"), modelPath: assetPath("object", "粤剧折扇", "glb") },
+  数字档案碎片: { imagePath: assetPath("object", "数字档案碎片", "png"), modelPath: assetPath("object", "数字档案碎片", "glb") },
+  舞台机关钥匙: { imagePath: assetPath("object", "舞台机关钥匙", "png"), modelPath: assetPath("object", "舞台机关钥匙", "glb") },
   蟒袍胸前补子纹样: {
-    imagePath: "./assets/object/蟒袍胸前补子纹样.png",
-    modelPath: "./assets/object/蟒袍胸前补子纹样.glb"
+    imagePath: assetPath("object", "蟒袍胸前补子纹样", "png"),
+    modelPath: assetPath("object", "蟒袍胸前补子纹样", "glb")
   }
+};
+
+const sceneAssetMap = {
+  书房密室: { imagePath: assetPath("scene", "书房密室", "png"), modelPath: assetPath("scene", "书房密室", "glb") },
+  序章粤剧剧场: { imagePath: assetPath("scene", "序章粤剧剧场", "png"), modelPath: assetPath("scene", "序章粤剧剧场", "glb") },
+  "粤剧戏棚(1)": { imagePath: assetPath("scene", "粤剧戏棚(1)", "png"), modelPath: assetPath("scene", "粤剧戏棚(1)", "glb") },
+  "粤剧戏棚(2)": { imagePath: assetPath("scene", "粤剧戏棚(2)", "png"), modelPath: assetPath("scene", "粤剧戏棚(2)", "glb") },
+  "粤剧戏棚(3)": { imagePath: assetPath("scene", "粤剧戏棚(3)", "png"), modelPath: assetPath("scene", "粤剧戏棚(3)", "glb") },
+  封相朝堂: { imagePath: assetPath("scene", "封相朝堂", "png"), modelPath: assetPath("scene", "封相朝堂", "glb") },
+  院子: { imagePath: assetPath("scene", "院子", "png"), modelPath: assetPath("scene", "院子", "glb") }
 };
 
 export const characterExhibits = [
@@ -86,18 +66,15 @@ export const characterExhibits = [
     roleType: "通用 NPC / 交互引导角色",
     operaRoleRef: "群像角色",
     storyFunction: "引导 / 搜证入口",
-    stance: "视剧情而变，可作为引导者、旁观者或线索触发角色。",
+    stance: "在戏台前后承接观众视线，负责将人带入封相疑局。",
     clueLevel: "普通",
     stage: "开锣 / 搜证",
     quote: "戏未开锣，局已在台下悄然成形。",
-    soundscape: ["戏棚环境声", "远处锣鼓点", "人群低语"],
+    soundscape: ["戏棚低语", "脚步回声", "台前候场"],
     visualFocus: "观察人物姿态、服饰轮廓、冠饰比例与整体舞台气质。",
     clueHint: "可作为对话引导、场景提示或搜证任务入口。",
     primaryTags: ["全部"],
-    operaTags: ["群像"],
-    soundscapeScene: "戏棚后台",
-    isFeatured: false,
-    isSuspicious: false
+    operaTags: ["群像"]
   },
   {
     id: "suqin",
@@ -107,18 +84,16 @@ export const characterExhibits = [
     roleType: "主视角 / 六国丞相 / 合纵策士",
     operaRoleRef: "正生 / 文武生",
     storyFunction: "制衡 / 主线推理",
-    stance: "表面受六国共封，实则被六国利益共同牵制。",
+    stance: "立于六国权谋中心，既是封相主角，也是局中被凝视之人。",
     clueLevel: "关键",
     stage: "封相 / 疑云 / 反转",
     quote: "六印加身，亦是六国枷锁。",
     soundscape: ["朝堂回声", "低频疑云", "封相锣鼓点"],
     visualFocus: "观察冠服层次、腰间配饰、袖口纹样与主角站姿。",
-    clueHint: "玩家主视角人物，所有权谋线索最终会回到苏秦的抉择。",
-    primaryTags: ["主线人物", "关键线索"],
+    clueHint: "玩家主视角人物，所有权谋线索最终都会回到苏秦的抉择。",
+    primaryTags: ["全部", "主线人物", "关键线索"],
     operaTags: ["正生", "文武生"],
-    soundscapeScene: "封相大典",
-    isFeatured: true,
-    isSuspicious: false
+    isFeatured: true
   },
   {
     id: "chu-huiwang",
@@ -128,17 +103,15 @@ export const characterExhibits = [
     roleType: "六国诸侯 / 嫌疑人 / 权谋角色",
     operaRoleRef: "大花面",
     storyFunction: "猜忌 / 暗线",
-    stance: "表面拥护合纵，暗中觊觎联盟主导权。",
+    stance: "封相之礼中神情威严，实际对合纵盟主之位充满试探。",
     clueLevel: "关键",
     stage: "封相 / 疑云 / 搜证",
     quote: "合纵之名下，谁才是真正盟主？",
-    soundscape: ["低频鼓点", "朝堂回声", "衣袍摩擦声"],
-    visualFocus: "观察大花面威严感、厚重袍服、肩部轮廓与王侯气势。",
-    clueHint: "可与通秦密信、朝堂密谈、诸侯猜忌线索关联。",
-    primaryTags: ["六国诸侯", "关键线索", "隐藏线索"],
+    soundscape: ["朝堂压场", "重鼓低震", "耳语暗涌"],
+    visualFocus: "观察面部神情、王侯冠饰、肩部轮廓与站位压迫感。",
+    clueHint: "适合作为对权力怀疑与朝堂施压的关键观察对象。",
+    primaryTags: ["全部", "六国诸侯", "关键线索"],
     operaTags: ["大花面"],
-    soundscapeScene: "朝堂疑云",
-    isFeatured: true,
     isSuspicious: true
   },
   {
@@ -149,18 +122,15 @@ export const characterExhibits = [
     roleType: "六国诸侯 / 观望者 / 布局者",
     operaRoleRef: "公脚",
     storyFunction: "制衡 / 旁观",
-    stance: "看似老成持重，实则暗中布局，试图坐收渔利。",
+    stance: "不轻易露出立场，更多以观察者姿态审视封相大局。",
     clueLevel: "关键",
     stage: "封相 / 疑云",
     quote: "不争一时，方能坐收天下之局。",
-    soundscape: ["朝堂低语", "玉佩轻响", "远处梆子"],
-    visualFocus: "观察王侯服饰的稳重感、袖口纹样与腰间玉饰。",
-    clueHint: "与齐国中立立场、暗中观望、制衡他国的线索有关。",
-    primaryTags: ["六国诸侯", "关键线索"],
-    operaTags: ["公脚"],
-    soundscapeScene: "封相大典",
-    isFeatured: false,
-    isSuspicious: false
+    soundscape: ["丝竹余响", "宫灯轻摆", "堂前静压"],
+    visualFocus: "观察衣纹走势、袖摆重量、王者气度与视线方向。",
+    clueHint: "适合与其他诸侯对照，判断谁在明面观礼、谁在暗处布局。",
+    primaryTags: ["全部", "六国诸侯", "关键线索"],
+    operaTags: ["公脚"]
   },
   {
     id: "liang-huiwang",
@@ -170,17 +140,15 @@ export const characterExhibits = [
     roleType: "六国诸侯 / 合纵推手 / 制衡者",
     operaRoleRef: "公脚 / 王侯角色化处理",
     storyFunction: "制衡 / 猜忌",
-    stance: "看似感恩苏秦，实则忌惮其权倾六国。",
+    stance: "既推动封相成局，也担心六印最终反噬魏国筹谋。",
     clueLevel: "关键",
     stage: "封相 / 疑云 / 搜证",
     quote: "封相可以成局，也可以困局。",
-    soundscape: ["沉重靴步声", "朝堂回声", "低频疑云"],
-    visualFocus: "观察王侯袍服、腰带、冠饰与角色威压感。",
-    clueHint: "与制衡苏秦、限制相权、封相大典背后安排有关。",
-    primaryTags: ["六国诸侯", "关键线索"],
+    soundscape: ["金佩轻响", "朝堂压声", "暗潮低鸣"],
+    visualFocus: "观察王袍比例、佩饰摆位与人物视线的犹疑感。",
+    clueHint: "适合与苏秦、公孙衍相关线索进行对照判断。",
+    primaryTags: ["全部", "六国诸侯", "关键线索"],
     operaTags: ["公脚"],
-    soundscapeScene: "朝堂疑云",
-    isFeatured: false,
     isSuspicious: true
   },
   {
@@ -191,17 +159,15 @@ export const characterExhibits = [
     roleType: "朝堂传诏重臣 / 关键线索人物",
     operaRoleRef: "黄门官",
     storyFunction: "传诏 / 暗线",
-    stance: "熟知朝堂礼制与封相流程，立场暧昧。",
+    stance: "看似依礼宣诏，实则掌握朝堂气流与暗语流向。",
     clueLevel: "隐藏",
     stage: "封相 / 搜证 / 反转",
     quote: "诏令落下之前，已有暗语传开。",
-    soundscape: ["翻诏书声", "靴步声", "朝堂低语"],
-    visualFocus: "观察官服层次、袖口、腰牌与传诏角色的肃穆姿态。",
-    clueHint: "可触发封相诏书、传令顺序、朝堂暗语等隐藏线索。",
-    primaryTags: ["朝堂人物", "隐藏线索"],
+    soundscape: ["宣诏余音", "朝靴掠地", "殿前肃静"],
+    visualFocus: "观察官服层次、手势节奏、诏令姿态与前倾的身位。",
+    clueHint: "适合串联朝堂线与隐藏线索，是转折前的重要桥接人物。",
+    primaryTags: ["全部", "朝堂人物", "隐藏线索"],
     operaTags: ["黄门官"],
-    soundscapeScene: "搜证密室",
-    isFeatured: false,
     isSuspicious: true
   },
   {
@@ -212,18 +178,15 @@ export const characterExhibits = [
     roleType: "六国诸侯 / 边境势力代表",
     operaRoleRef: "王侯角色化处理",
     storyFunction: "同盟 / 猜忌",
-    stance: "位处战局要冲，既需要合纵抗秦，也担心被盟友牺牲。",
+    stance: "盟书可以签下，但边关安危始终是赵国真正关心之处。",
     clueLevel: "普通",
     stage: "封相 / 疑云 / 搜证",
     quote: "盟书可签，边关之患却无人替我承担。",
-    soundscape: ["战鼓低鸣", "甲胄声", "朝堂回声"],
-    visualFocus: "观察武备感、披风、腰带与边境诸侯的紧张气质。",
-    clueHint: "可关联边关军报、六国军力分配、同盟信任危机。",
-    primaryTags: ["六国诸侯"],
-    operaTags: [],
-    soundscapeScene: "朝堂疑云",
-    isFeatured: false,
-    isSuspicious: true
+    soundscape: ["边地风声", "甲片摩擦", "殿前沉鼓"],
+    visualFocus: "观察人物站姿的防备感、衣甲边缘与边地来者的气质。",
+    clueHint: "常与同盟表象形成反差，适合用于比对盟约真心。",
+    primaryTags: ["全部", "六国诸侯"],
+    operaTags: []
   },
   {
     id: "han-lord",
@@ -233,17 +196,15 @@ export const characterExhibits = [
     roleType: "六国诸侯 / 弱国代表 / 嫌疑人",
     operaRoleRef: "王侯角色化处理",
     storyFunction: "私通 / 暗线",
-    stance: "国力较弱，表面依附合纵，暗中寻找自保退路。",
+    stance: "弱国在大局之中更在乎出路，因此最容易牵出隐线。",
     clueLevel: "隐藏",
     stage: "疑云 / 搜证 / 反转",
     quote: "弱国无忠奸，只有活路。",
-    soundscape: ["低频疑云", "翻信纸声", "远处梆子"],
-    visualFocus: "观察服饰细节、神态姿势与较为收敛的王侯气质。",
-    clueHint: "可与私通外敌、密信往来、合纵破口等暗线相关。",
-    primaryTags: ["六国诸侯", "隐藏线索"],
+    soundscape: ["暗线低语", "书信摩擦", "屏息旁听"],
+    visualFocus: "观察人物缩肩姿态、衣纹收束感与不安视线。",
+    clueHint: "适合结合密信、院落场景与私通线索一并查看。",
+    primaryTags: ["全部", "六国诸侯", "隐藏线索"],
     operaTags: [],
-    soundscapeScene: "搜证密室",
-    isFeatured: false,
     isSuspicious: true
   },
   {
@@ -254,18 +215,15 @@ export const characterExhibits = [
     roleType: "六国诸侯 / 北地代表 / 观望者",
     operaRoleRef: "王侯角色化处理",
     storyFunction: "猜忌 / 旁观",
-    stance: "远在北地，对合纵既有期待，也有距离与不信任。",
+    stance: "始终保留寒意般的距离感，不急于表态也不轻信盟局。",
     clueLevel: "普通",
     stage: "封相 / 疑云",
     quote: "北风未止，盟约又能暖几时？",
-    soundscape: ["冷风声", "朝堂回声", "衣袍摩擦声"],
-    visualFocus: "观察披风、衣袍厚重感、冠饰与北地诸侯的冷峻气质。",
-    clueHint: "可关联六国距离感、联盟稳定性与诸侯观望态度。",
-    primaryTags: ["六国诸侯"],
-    operaTags: [],
-    soundscapeScene: "朝堂疑云",
-    isFeatured: false,
-    isSuspicious: false
+    soundscape: ["北地风声", "远鼓回荡", "冷调宫灯"],
+    visualFocus: "观察人物整体冷峻轮廓、衣料厚度与停驻节奏。",
+    clueHint: "适合与齐庄王一并对照，判断不同观望者的权谋分寸。",
+    primaryTags: ["全部", "六国诸侯"],
+    operaTags: []
   },
   {
     id: "six-states-civil-official",
@@ -275,18 +233,15 @@ export const characterExhibits = [
     roleType: "朝堂文官 / 仪式见证者 / 背景线索角色",
     operaRoleRef: "文场官 / 群像角色",
     storyFunction: "旁观 / 传诏",
-    stance: "负责记录、传递、见证封相仪式，可能掌握细碎文书线索。",
+    stance: "史册常只记封相大礼，却不记朝堂每一声压低的私语。",
     clueLevel: "背景",
     stage: "开锣 / 封相 / 搜证",
     quote: "史册只记大典，不记每一声低语。",
-    soundscape: ["翻册声", "毛笔书写声", "朝堂低语"],
-    visualFocus: "观察文官袍服、袖口、手部姿态与文书气质。",
-    clueHint: "可作为文书、名册、诏令、座次表等搜证入口。",
-    primaryTags: ["朝堂人物"],
-    operaTags: ["群像"],
-    soundscapeScene: "封相大典",
-    isFeatured: false,
-    isSuspicious: false
+    soundscape: ["文官低声", "卷轴翻动", "殿内回音"],
+    visualFocus: "观察服饰层叠、袖口秩序感与文官站位关系。",
+    clueHint: "常用于营造朝堂氛围，也可作为背景目击者参照。",
+    primaryTags: ["全部", "朝堂人物"],
+    operaTags: ["群像"]
   },
   {
     id: "generic-guard",
@@ -296,18 +251,15 @@ export const characterExhibits = [
     roleType: "朝堂侍卫 / 仪仗守卫 / 动线封锁角色",
     operaRoleRef: "武行 / 龙套武将",
     storyFunction: "护卫 / 暗线",
-    stance: "守卫朝堂秩序，亦可能见过不该出现的人与物。",
+    stance: "守的是殿门、廊道与动线，也象征信息的被阻断与被筛选。",
     clueLevel: "普通",
     stage: "封相 / 疑云 / 搜证",
     quote: "守的是殿门，未必守得住人心。",
-    soundscape: ["甲胄摩擦声", "靴步声", "兵器轻响"],
-    visualFocus: "观察甲胄、武器、站姿、护卫动线与仪仗感。",
-    clueHint: "可关联出入记录、刺杀动线、殿门守卫漏洞。",
-    primaryTags: ["朝堂人物"],
-    operaTags: ["武行"],
-    soundscapeScene: "朝堂疑云",
-    isFeatured: false,
-    isSuspicious: true
+    soundscape: ["甲片轻撞", "长戟落地", "封门回声"],
+    visualFocus: "观察武行站姿、持械方式、脚步重心与防线感。",
+    clueHint: "适合搭配院落与朝堂场景理解人物行动路线。",
+    primaryTags: ["全部", "朝堂人物"],
+    operaTags: ["武行"]
   },
   {
     id: "cantonese-opera-performer",
@@ -317,58 +269,59 @@ export const characterExhibits = [
     roleType: "戏棚人物 / 序幕表演者 / 后台叙事角色",
     operaRoleRef: "旦角 / 戏棚伶人",
     storyFunction: "引导 / 旁观",
-    stance: "既是台上表演者，也是引导玩家理解粤剧美学与剧情反差的角色。",
+    stance: "一声唱词能打开戏台，也能暗暗提示台下真正的伏笔。",
     clueLevel: "背景",
     stage: "开锣 / 后台 / 反转",
     quote: "台上一句唱词，台下可能是一道伏笔。",
-    soundscape: ["伶人吊嗓声", "水袖破风声", "锣鼓点"],
-    visualFocus: "观察水袖、身段、妆造、头饰与粤剧表演姿态。",
-    clueHint: "可作为序幕导览、后台提示、声景解说与文化注释角色。",
-    primaryTags: ["戏棚人物"],
-    operaTags: ["旦角"],
-    soundscapeScene: "戏棚后台",
-    isFeatured: false,
-    isSuspicious: false
+    soundscape: ["唱腔起势", "板眼轻敲", "后台整妆"],
+    visualFocus: "观察身段线条、手部兰花势、头面比例与戏棚气韵。",
+    clueHint: "适合与序章场景、唱腔记忆片一起观看，串联开锣线索。",
+    primaryTags: ["全部", "戏棚人物"],
+    operaTags: ["旦角"]
   }
-].map((exhibit) => ({
-  ...exhibit,
-  assetCategory: "character",
-  imagePath: characterAssetMap[exhibit.name].imagePath,
-  modelPath: characterAssetMap[exhibit.name].modelPath,
-  hasModel: true,
-  archiveState: "已入库"
-}));
+].map((exhibit) => {
+  const assets = characterAssetMap[exhibit.name] ?? {};
+  return {
+    ...exhibit,
+    assetCategory: "character",
+    imagePath: assets.imagePath ?? "",
+    modelPath: assets.modelPath ?? "",
+    hasModel: Boolean(assets.modelPath),
+    archiveState: assets.modelPath ? "已接入展台" : "待补充模型",
+    soundscapeScene: exhibit.soundscape[0] ?? "戏台声景",
+    isFeatured: Boolean(exhibit.isFeatured),
+    isSuspicious: Boolean(exhibit.isSuspicious)
+  };
+});
 
 export const objectExhibits = [
   {
-    id: "clue-wooden-box",
+    id: "small-clue-box",
     name: "小型线索木匣",
     category: "物件",
-    objectType: "搜证容器",
-    role: "剧本杀线索收纳道具 / 搜证入口",
-    storyStage: "搜证 / 疑云",
-    clueLevel: "普通",
-    quote: "匣中未必藏重物，却可能藏着第一道破局线索。",
-    description:
-      "一个用于收纳密信、令牌或声景碎片的小型木匣，适合作为玩家进入搜证流程的第一个互动物件。",
-    symbolism: "象征剧情由封相盛典转入暗线搜证。",
-    soundscape: ["木匣开合声", "轻微摩擦声", "低频疑云"],
-    soundscapeScene: "搜证密室"
+    objectType: "线索匣",
+    role: "机关解锁道具 / 场景互动线索",
+    storyStage: "搜证 / 反转",
+    clueLevel: "关键",
+    quote: "匣中不只藏物，也藏着谁想让真相迟一步出现。",
+    description: "用于开启暗格、收纳密信或藏匿关键物证的木匣线索。",
+    symbolism: "代表被暂时压住的真相与尚未揭开的局中局。",
+    soundscape: ["木匣轻响", "机关卡扣", "搜证呼吸"],
+    soundscapeScene: "院落搜证"
   },
   {
-    id: "six-states-token",
+    id: "six-states-command-token",
     name: "六国封相令牌",
     category: "物件",
     objectType: "令牌",
-    role: "封相仪式权限道具 / 朝堂通行证物",
-    storyStage: "封相 / 搜证",
+    role: "封相信物 / 朝堂权力标识",
+    storyStage: "封相 / 疑云",
     clueLevel: "关键",
-    quote: "令牌可入朝堂，也可揭开谁曾踏入禁地。",
-    description:
-      "刻有六国封相仪式意味的令牌，可作为朝堂出入、角色身份与动线推理的关键物证。",
-    symbolism: "象征封相仪式的权力秩序，以及朝堂内部的出入权限。",
-    soundscape: ["金属轻碰声", "靴步声", "朝堂回声"],
-    soundscapeScene: "封相大典"
+    quote: "一枚令牌，既是荣耀，也是一层层试探的凭证。",
+    description: "象征封相大礼与诸侯权力承认关系的核心信物。",
+    symbolism: "代表权力合法性与联盟秩序的短暂成立。",
+    soundscape: ["金属轻碰", "殿前回声", "朝堂肃静"],
+    soundscapeScene: "封相朝堂"
   },
   {
     id: "phoenix-crown",
@@ -379,157 +332,150 @@ export const objectExhibits = [
     storyStage: "开锣 / 封相",
     clueLevel: "关键视觉线索",
     quote: "珠翠满冠，是盛典表象，也是身份秩序。",
-    description: "适合观察珠饰、流苏、金属骨架、青绿羽纹与红色垂珠层次。",
+    description: "用于强调典礼仪式感与人物身份层级的戏曲冠饰。",
     symbolism: "代表封相大典中的华丽表象与身份秩序。",
     soundscape: ["珠饰碰撞声", "后台整冠声", "远处锣鼓点"],
-    soundscapeScene: "后台整冠"
+    soundscapeScene: "后台整妆"
   },
   {
     id: "chancellor-jade-pendant",
     name: "丞相玉佩",
     category: "物件",
     objectType: "佩饰",
-    role: "身份象征 / 苏秦相关物证",
+    role: "身份配饰 / 苏秦关联物证",
     storyStage: "封相 / 反转",
     clueLevel: "关键",
-    quote: "玉佩悬身，既是荣光，也是无声的枷锁。",
-    description:
-      "与丞相身份相关的玉佩，可用于呈现苏秦受封后的身份变化与权力压力。",
-    symbolism: "象征苏秦从策士到六国丞相的身份转换。",
-    soundscape: ["玉佩轻响", "朝堂回声", "低频疑云"],
-    soundscapeScene: "朝堂疑云"
+    quote: "玉佩近身，分量却比礼服更沉。",
+    description: "与苏秦形象、朝堂身份与封相礼制直接相关的贴身配饰。",
+    symbolism: "代表身份被赋予，也代表责任被加重。",
+    soundscape: ["玉佩轻响", "朝堂回声", "暗潮低鸣"],
+    soundscapeScene: "封相朝堂"
   },
   {
     id: "vocal-memory-fragment",
     name: "声境碎片-唱腔记忆片",
     category: "物件",
     objectType: "声境碎片",
-    role: "唱腔声景记忆 / 数字声音线索",
+    role: "唱腔记忆存片 / 戏棚声景线索",
     storyStage: "开锣 / 后台 / 反转",
     clueLevel: "隐藏",
-    quote: "一句唱腔未完，台下的真相已先露声息。",
-    description:
-      "承载粤剧唱腔记忆的数字声境碎片，用于提示玩家戏曲声音与剧情暗线之间的关联。",
-    symbolism: "象征传统唱腔被转译为可搜证、可互动的数字声音记忆。",
-    soundscape: ["伶人吊嗓声", "粤剧唱腔", "空间混响"],
-    soundscapeScene: "戏棚后台"
+    quote: "一句唱词落下，留下的不只是余韵。",
+    description: "承载序章唱腔记忆的数字化声景碎片，可提示戏棚线索。",
+    symbolism: "代表戏台记忆被重新唤起，也提示剧情伏笔已埋下。",
+    soundscape: ["唱腔余韵", "戏棚板眼", "后台回响"],
+    soundscapeScene: "序章粤剧剧场"
   },
   {
     id: "drum-memory-chip",
     name: "声境碎片-锣鼓记忆晶片",
     category: "物件",
     objectType: "声境碎片",
-    role: "锣鼓声景记忆 / 节奏线索",
+    role: "锣鼓记忆存片 / 节奏线索",
     storyStage: "开锣 / 疑云 / 反转",
     clueLevel: "隐藏",
-    quote: "锣鼓点一变，盛典便不再只是盛典。",
-    description:
-      "保存锣鼓点与梆子节奏的声境晶片，可用于暗示剧情节奏从喜庆转向悬疑。",
-    symbolism: "象征粤剧锣鼓从舞台节奏转化为剧本杀推理线索。",
-    soundscape: ["锣鼓点", "梆子", "低频反转声"],
-    soundscapeScene: "封相大典"
+    quote: "鼓点一乱，礼与局就会一起露出缝隙。",
+    description: "记录锣鼓节奏变化的碎片，可辅助理解仪式转折与气氛变化。",
+    symbolism: "代表舞台节奏与权谋节奏的彼此映照。",
+    soundscape: ["鼓点碎响", "铜锣余震", "礼乐断续"],
+    soundscapeScene: "封相朝堂"
   },
   {
     id: "official-seal",
     name: "官印",
     category: "物件",
     objectType: "印章",
-    role: "权力物证 / 朝堂核心证物",
+    role: "礼制凭证 / 朝堂制度物",
     storyStage: "封相 / 搜证 / 反转",
     clueLevel: "关键",
-    quote: "印落之处，不只是权力，也是责任与困局。",
-    description: "代表官职、权力与命令合法性的官印，可作为朝堂谜案中的核心证物。",
-    symbolism: "象征权力授予、政治秩序与真相被盖印封存。",
-    soundscape: ["印章落案声", "朝堂回声", "低频疑云"],
-    soundscapeScene: "封相大典"
+    quote: "印落于纸，往往比人开口更早决定局势。",
+    description: "与封相诏令、文书流转和朝堂制度合法性相关的关键物证。",
+    symbolism: "代表制度表面上的稳固与实际操作中的权力流向。",
+    soundscape: ["印章落案", "朝堂回声", "低声议论"],
+    soundscapeScene: "封相朝堂"
   },
   {
     id: "wax-sealed-letter",
     name: "封蜡密函",
     category: "物件",
     objectType: "密函",
-    role: "隐藏文书 / 私通信物",
+    role: "隐藏文书 / 私通线索",
     storyStage: "疑云 / 搜证 / 反转",
     clueLevel: "隐藏",
-    quote: "蜡封未破，疑心已起。",
-    description:
-      "以封蜡封存的密函，适合承载私通、暗线交易或未公开盟约等剧本杀线索。",
-    symbolism: "象征表面未被拆开的秘密，以及各国暗中往来的痕迹。",
-    soundscape: ["封蜡裂开声", "翻信纸声", "烛火声"],
-    soundscapeScene: "搜证密室"
+    quote: "蜡封未裂，心迹先露。",
+    description: "尚未公开的密函，常用于串联私通、暗线与立场摇摆。",
+    symbolism: "代表未被宣之于口却已改变局面的隐秘意志。",
+    soundscape: ["封蜡开裂", "纸页摩擦", "暗处耳语"],
+    soundscapeScene: "院落搜证"
   },
   {
     id: "warring-states-letter",
     name: "战国密信",
     category: "物件",
     objectType: "密信",
-    role: "战国文书 / 暗线证物",
+    role: "战国往来文书 / 暗线凭证",
     storyStage: "搜证 / 反转",
     clueLevel: "隐藏",
-    quote: "信中所写未必是真相，缺失之处才是关键。",
-    description:
-      "记录六国往来、军情或私下协议的战国密信，是推理各国真实立场的重要文书物证。",
-    symbolism: "象征合纵联盟背后的脆弱信任与利益交换。",
-    soundscape: ["翻信纸声", "笔墨声", "低频疑云"],
-    soundscapeScene: "搜证密室"
+    quote: "笔墨不响，却常把局势写偏半寸。",
+    description: "牵动诸侯关系与暗线勾连的关键书信物件。",
+    symbolism: "代表合纵与猜忌之间不断摇摆的外交通道。",
+    soundscape: ["纸页翻动", "毛笔余声", "屏息低语"],
+    soundscapeScene: "院落搜证"
   },
   {
     id: "cantonese-opera-fan",
     name: "粤剧折扇",
     category: "物件",
     objectType: "戏曲道具",
-    role: "表演道具 / 身段辅助物",
+    role: "戏台道具 / 身段辅助物",
     storyStage: "开锣 / 后台",
     clueLevel: "普通",
-    quote: "一开一合之间，唱念做打皆有章法。",
-    description: "粤剧表演中常见的折扇道具，可用于展示人物身段、舞台动作与戏曲美学。",
-    symbolism: "象征粤剧表演程式与角色气质。",
-    soundscape: ["折扇开合声", "水袖破风声", "戏棚环境声"],
-    soundscapeScene: "戏棚后台"
+    quote: "一开一合之间，既有身段，也有分寸。",
+    description: "用于戏曲表演动作与人物气质表达的传统折扇。",
+    symbolism: "代表戏台中的身段秩序与人物风度。",
+    soundscape: ["折扇开合", "台步摩擦", "唱腔起势"],
+    soundscapeScene: "序章粤剧剧场"
   },
   {
     id: "digital-archive-fragment",
     name: "数字档案碎片",
     category: "物件",
     objectType: "数字档案",
-    role: "数字化线索 / 记忆残片",
+    role: "档案化线索 / 证据索引",
     storyStage: "搜证 / 反转",
     clueLevel: "隐藏",
-    quote: "碎片不是残缺，而是等待被重新拼合的真相。",
-    description:
-      "将戏曲、声景与剧情线索数字化后形成的档案碎片，可作为系统化搜证与剧情解锁的介面元素。",
-    symbolism: "象征非遗内容从舞台记忆转化为数字档案与互动线索。",
-    soundscape: ["数字杂讯", "记忆回放声", "低频脉冲"],
-    soundscapeScene: "搜证密室"
+    quote: "被整理进档案的，不一定就是全部真相。",
+    description: "用于串联人物、场景与物件证据关系的数字档案索引碎片。",
+    symbolism: "代表被重新归档、重新解释的剧情证词。",
+    soundscape: ["数据脉冲", "档案跳频", "低亮回响"],
+    soundscapeScene: "院落搜证"
   },
   {
     id: "stage-mechanism-key",
     name: "舞台机关钥匙",
     category: "物件",
-    objectType: "钥匙",
-    role: "机关解锁道具 / 场景互动线索",
+    objectType: "机关钥匙",
+    role: "舞台机关钥匙 / 场景互动线索",
     storyStage: "搜证 / 后台",
     clueLevel: "关键",
-    quote: "能开的不只是机关，也可能是另一重戏中戏。",
-    description: "用于开启舞台暗格、后台箱匣或搜证场景机关的钥匙道具。",
-    symbolism: "象征玩家由观众转为参与者，打开戏台背后的隐藏空间。",
-    soundscape: ["钥匙碰撞声", "木门开合声", "机关转动声"],
-    soundscapeScene: "戏棚后台"
+    quote: "钥匙能开暗格，也能开出被藏起来的另一幕。",
+    description: "用于打开舞台暗格、后台箱匣或场景机关的关键道具。",
+    symbolism: "代表从表演空间进入隐藏空间的转换节点。",
+    soundscape: ["钥匙碰撞", "机关弹开", "后台木响"],
+    soundscapeScene: "序章粤剧剧场"
   },
   {
     id: "mangpao-buzi-pattern",
     name: "蟒袍胸前补子纹样",
     category: "物件",
     objectType: "戏服纹样",
-    role: "服饰细节 / 粤剧行头观察物",
+    role: "服饰观察件 / 戏曲身份细节",
     storyStage: "开锣 / 封相",
     clueLevel: "普通",
-    quote: "一方补子，绣的是身份，也绣着舞台秩序。",
-    description:
-      "蟒袍胸前的补子纹样，可用于观察粤剧服饰的图案层次、身份符号与舞台美学。",
-    symbolism: "象征戏曲服饰中的身份编码与礼制秩序。",
-    soundscape: ["衣袍摩擦声", "后台整衣声", "远处锣鼓点"],
-    soundscapeScene: "封相大典"
+    quote: "一片补子纹样，往往比台词更早透露身份。",
+    description: "用于近距离观察蟒袍纹样、色彩秩序与服饰等级关系的展件。",
+    symbolism: "代表戏曲服饰系统中关于身份与气度的视觉密码。",
+    soundscape: ["绣纹摩挲", "布料低响", "后台整理"],
+    soundscapeScene: "封相朝堂"
   }
 ].map((exhibit) => {
   const assets = objectAssetMap[exhibit.name] ?? {};
@@ -538,33 +484,367 @@ export const objectExhibits = [
     assetCategory: "object",
     imagePath: assets.imagePath ?? "",
     modelPath: assets.modelPath ?? "",
+    videoPath: assets.videoPath ?? "",
     hasModel: Boolean(assets.modelPath),
-    archiveState: assets.modelPath ? "已入库" : "展品尚未入库"
+    archiveState: assets.modelPath ? "已接入展台" : "待补充模型"
+  };
+});
+
+export const sceneExhibits = [
+  {
+    id: "study-secret-room",
+    name: "书房密室",
+    category: "场景",
+    sceneType: "搜证 / 暗线场景",
+    sceneGroup: "搜证空间",
+    role: "用于放置密信、令牌、相印等剧本杀线索",
+    description: "提供玩家进行线索观察、密信搜证与剧情推理的空间。",
+    soundscape: ["低频疑云", "翻信纸声", "烛火声"],
+    soundscapeScene: "密室搜证",
+    controls: {
+      mode: "自由浏览",
+      canOrbit: true,
+      canPan: true,
+      canZoom: true,
+      canEnterScene: true,
+      minDistance: 1.5,
+      maxDistance: 8,
+      maxPolarAngle: Math.PI * 0.48,
+      minPolarAngle: Math.PI * 0.12,
+      enableDamping: true,
+      dampingFactor: 0.08,
+      autoRotate: false
+    },
+    hotspots: [
+      {
+        id: "letter-fragment",
+        label: "密信残页",
+        type: "线索点",
+        description: "观察纸页内容与摆放方向，推断谁曾在此停留。",
+        position: [-1.2, 1.1, 0.4]
+      },
+      {
+        id: "court-token",
+        label: "朝堂令牌",
+        type: "观察点",
+        description: "可与封相朝堂中的权力信物互相对照。",
+        position: [0.6, 1.25, -0.8]
+      },
+      {
+        id: "hidden-compartment",
+        label: "暗格",
+        type: "空间线索",
+        description: "适合联想到被延后公开的真相与隐藏证物。",
+        position: [1.4, 0.9, 1.1]
+      }
+    ]
+  },
+  {
+    id: "prologue-theatre",
+    name: "序章粤剧剧场",
+    category: "场景",
+    sceneType: "剧场 / 序章叙事场景",
+    sceneGroup: "戏曲空间",
+    role: "用于作为玩家进入《六国大封相》前的开场空间",
+    description: "连接现实观演与虚拟入戏的过渡场景，让玩家从看戏人转为戏中人。",
+    soundscape: ["剧场低语", "开场锣鼓", "空间混响"],
+    soundscapeScene: "序章剧场",
+    controls: {
+      mode: "场景漫游",
+      canOrbit: true,
+      canPan: true,
+      canZoom: true,
+      canEnterScene: true,
+      minDistance: 1.8,
+      maxDistance: 18,
+      maxPolarAngle: Math.PI * 0.48,
+      minPolarAngle: Math.PI * 0.12,
+      enableDamping: true,
+      dampingFactor: 0.08,
+      autoRotate: false
+    },
+    hotspots: [
+      {
+        id: "immersive-entry",
+        label: "入戏入口",
+        type: "空间线索",
+        description: "这里连接现实观演与戏中叙事，是身份转换的起点。",
+        position: [0, 1.2, 0]
+      },
+      {
+        id: "prologue-stage",
+        label: "序章舞台",
+        type: "观察点",
+        description: "适合先看整体舞台结构与剧场空间的开场关系。",
+        position: [1.8, 1.1, -0.6]
+      },
+      {
+        id: "audience-view",
+        label: "观众视角",
+        type: "声景点",
+        description: "用于感受观演空间混响与从看戏人进入戏中人的过渡。",
+        position: [-1.4, 1.5, -1.2]
+      }
+    ]
+  },
+  {
+    id: "opera-shed-1",
+    name: "粤剧戏棚(1)",
+    category: "场景",
+    sceneType: "戏台 / 序幕场景",
+    sceneGroup: "戏曲空间",
+    role: "用于展示《六国大封相》开锣与粤剧表演氛围",
+    description: "重构粤剧戏棚、红毯戏台、后台幕布与观演空间。",
+    soundscape: ["锣鼓点", "戏棚环境声", "伶人吊嗓声"],
+    soundscapeScene: "戏棚开锣",
+    controls: {
+      mode: "自由浏览",
+      canOrbit: true,
+      canPan: true,
+      canZoom: true,
+      canEnterScene: true,
+      minDistance: 1.8,
+      maxDistance: 14,
+      maxPolarAngle: Math.PI * 0.48,
+      minPolarAngle: Math.PI * 0.12,
+      enableDamping: true,
+      dampingFactor: 0.08,
+      autoRotate: false
+    },
+    hotspots: [
+      {
+        id: "center-stage",
+        label: "戏台中央",
+        type: "观察点",
+        description: "适合先看红毯戏台与主表演区的视觉中心。",
+        position: [0, 1.4, 0]
+      },
+      {
+        id: "percussion-seat",
+        label: "锣鼓位",
+        type: "声景点",
+        description: "可联想戏棚节奏如何推动台上动作与观众情绪。",
+        position: [1.9, 1.1, -0.4]
+      }
+    ]
+  },
+  {
+    id: "opera-shed-2",
+    name: "粤剧戏棚(2)",
+    category: "场景",
+    sceneType: "戏台 / 表演场景",
+    sceneGroup: "戏曲空间",
+    role: "用于展示粤剧身段、唱腔与舞台调度",
+    description: "以不同角度呈现粤剧戏棚的舞台层次与后台空间。",
+    soundscape: ["台步声", "梆子声", "幕后人声"],
+    soundscapeScene: "戏棚调度",
+    controls: {
+      mode: "自由浏览",
+      canOrbit: true,
+      canPan: true,
+      canZoom: true,
+      canEnterScene: true,
+      minDistance: 1.8,
+      maxDistance: 14,
+      maxPolarAngle: Math.PI * 0.48,
+      minPolarAngle: Math.PI * 0.12,
+      enableDamping: true,
+      dampingFactor: 0.08,
+      autoRotate: false
+    },
+    hotspots: [
+      {
+        id: "backstage-entry",
+        label: "后台入口",
+        type: "动线点",
+        description: "观察演员如何从后台进入舞台，形成表演节奏。",
+        position: [-1.6, 1.25, -0.9]
+      },
+      {
+        id: "side-curtain",
+        label: "舞台侧幕",
+        type: "观察点",
+        description: "适合观看前台与后台的空间切换层次。",
+        position: [1.4, 1.2, 0.8]
+      }
+    ]
+  },
+  {
+    id: "opera-shed-3",
+    name: "粤剧戏棚(3)",
+    category: "场景",
+    sceneType: "戏台 / 声景场景",
+    sceneGroup: "戏曲空间",
+    role: "用于突出戏棚空间中的声音来源与观演关系",
+    description: "强调观众位置、戏台声场与传统戏棚结构。",
+    soundscape: ["观演空间混响", "锣鼓回声", "布幕摩擦声"],
+    soundscapeScene: "戏棚声场",
+    controls: {
+      mode: "自由浏览",
+      canOrbit: true,
+      canPan: true,
+      canZoom: true,
+      canEnterScene: true,
+      minDistance: 1.8,
+      maxDistance: 14,
+      maxPolarAngle: Math.PI * 0.48,
+      minPolarAngle: Math.PI * 0.12,
+      enableDamping: true,
+      dampingFactor: 0.08,
+      autoRotate: false
+    },
+    hotspots: [
+      {
+        id: "audience-zone",
+        label: "观演区",
+        type: "观察点",
+        description: "从观众区域理解戏棚前后景之间的观看关系。",
+        position: [0, 1.15, 1.8]
+      },
+      {
+        id: "sound-center",
+        label: "声场中心",
+        type: "声景点",
+        description: "感受锣鼓、唱腔与布幕反射形成的空间声场。",
+        position: [0.4, 1.35, -0.2]
+      }
+    ]
+  },
+  {
+    id: "investiture-court",
+    name: "封相朝堂",
+    category: "场景",
+    sceneType: "朝堂 / 封相场景",
+    sceneGroup: "朝堂仪式",
+    role: "用于展示六国诸侯共封苏秦的仪式空间",
+    description: "呈现六国诸侯、封相大典、相印与朝堂权力秩序。",
+    soundscape: ["朝堂回声", "封相锣鼓点", "人群朝拜声"],
+    soundscapeScene: "封相大典",
+    controls: {
+      mode: "场景漫游",
+      canOrbit: true,
+      canPan: true,
+      canZoom: true,
+      canEnterScene: true,
+      minDistance: 2.2,
+      maxDistance: 16,
+      maxPolarAngle: Math.PI * 0.46,
+      minPolarAngle: Math.PI * 0.1,
+      enableDamping: true,
+      dampingFactor: 0.08,
+      autoRotate: false
+    },
+    hotspots: [
+      {
+        id: "seal-array",
+        label: "六国相印",
+        type: "仪式点",
+        description: "观察权力信物如何在仪式中构成视觉中心。",
+        position: [0, 1.5, 0]
+      },
+      {
+        id: "lords-seat",
+        label: "诸侯席位",
+        type: "观察点",
+        description: "适合观察诸侯站位、权力距离与盟局张力。",
+        position: [2.4, 1.4, 1.2]
+      },
+      {
+        id: "court-side-door",
+        label: "朝堂侧门",
+        type: "空间线索",
+        description: "可联想到礼制之外的信息流动与人物出入。",
+        position: [-2.1, 1.6, -1]
+      }
+    ]
+  },
+  {
+    id: "courtyard",
+    name: "院子",
+    category: "场景",
+    sceneType: "搜证 / 院落场景",
+    sceneGroup: "户外空间",
+    role: "用于连接朝堂、密室与戏棚之间的剧情动线",
+    description: "作为剧本杀探索中的户外过渡空间，承载人物移动与暗线交流。",
+    soundscape: ["风过檐角", "脚步回廊", "远处低鼓"],
+    soundscapeScene: "院落搜证",
+    controls: {
+      mode: "场景漫游",
+      canOrbit: true,
+      canPan: true,
+      canZoom: true,
+      canEnterScene: true,
+      minDistance: 2.4,
+      maxDistance: 20,
+      maxPolarAngle: Math.PI * 0.5,
+      minPolarAngle: Math.PI * 0.08,
+      enableDamping: true,
+      dampingFactor: 0.08,
+      autoRotate: false
+    },
+    hotspots: [
+      {
+        id: "stone-path",
+        label: "院中石路",
+        type: "动线点",
+        description: "适合先确认人物移动路径与停留位置。",
+        position: [0, 1.3, 2]
+      },
+      {
+        id: "dark-corner",
+        label: "暗处角落",
+        type: "线索点",
+        description: "与私语、密函和隐藏线索关系最为紧密。",
+        position: [-2.2, 1.2, -0.8]
+      },
+      {
+        id: "side-passage",
+        label: "侧门通道",
+        type: "空间线索",
+        description: "用于理解院子如何承接朝堂、密室与戏棚之间的过渡。",
+        position: [2, 1.4, -1.5]
+      }
+    ]
+  }
+].map((exhibit) => {
+  const assets = sceneAssetMap[exhibit.name] ?? {};
+  return {
+    ...exhibit,
+    assetCategory: "scene",
+    imagePath: assets.imagePath ?? "",
+    modelPath: assets.modelPath ?? "",
+    hasModel: Boolean(assets.modelPath),
+    archiveState: assets.modelPath ? "已接入场景" : "待补充场景"
   };
 });
 
 export const categoryMeta = {
   character: {
-    label: "人物档案",
+    label: "人物馆",
     shortLabel: "人物",
     eyebrow: "人物档案 / 行当名册",
-    description:
-      "六国诸侯、朝堂重臣、侍卫文官与粤剧伶人齐聚于此；每一身行头，皆藏一重立场。",
-    introTitle: "戏曲角色档案墙",
-    introText:
-      "在朝堂仪典、戏棚后台与搜证暗线之间，人物的行当、服饰与站位本身便是叙事。",
-    archiveLabel: "已入库角色"
+    description: "从主视角、诸侯、朝堂到戏棚人物，进入《六国大封相》的角色线索网络。",
+    introTitle: "人物档案",
+    introText: "行当、身段、服饰与权谋气质同场展开，适合逐件细看。",
+    archiveLabel: "人物档案总览"
   },
   object: {
-    label: "物件档案",
+    label: "物件馆",
     shortLabel: "物件",
     eyebrow: "物件档案 / 道具线索库",
-    description:
-      "冠饰、令牌、密信、官印与声境碎片，皆是封相大典背后的证物。",
-    introTitle: "戏曲道具与线索库",
-    introText:
-      "十三件物件已全部接入缩略图与三维模型，可直接进入展台观察戏曲道具与搜证证物。",
-    archiveLabel: "物件与线索"
+    description: "冠饰、令牌、密信、相印与声景碎片共同构成搜证空间。",
+    introTitle: "物件档案",
+    introText: "从戏曲道具到权力信物，每件物证都指向封相礼背后的暗线。",
+    archiveLabel: "物件档案总览"
+  },
+  scene: {
+    label: "场景馆",
+    shortLabel: "场景",
+    eyebrow: "场景档案 / 三维空间库",
+    description: "以真实场景模型进入戏棚、朝堂与院落，观看《六国大封相》的空间叙事。",
+    introTitle: "场景档案",
+    introText: "可进入本地 3D 场景自由观察，适合浏览封相仪式与搜证动线。",
+    archiveLabel: "场景档案总览"
   }
 };
 
@@ -572,16 +852,8 @@ export const filterConfigs = {
   character: [
     {
       key: "primary",
-      label: "人物主筛选",
-      options: [
-        "全部",
-        "主线人物",
-        "六国诸侯",
-        "朝堂人物",
-        "戏棚人物",
-        "关键线索",
-        "隐藏线索"
-      ]
+      label: "主筛选",
+      options: ["全部", "主线人物", "六国诸侯", "朝堂人物", "戏棚人物", "关键线索", "隐藏线索"]
     },
     {
       key: "camp",
@@ -597,8 +869,15 @@ export const filterConfigs = {
   object: [
     {
       key: "primary",
-      label: "物件主筛选",
+      label: "主筛选",
       options: ["全部", "关键线索", "隐藏线索", "声境碎片", "文书密信", "权力信物", "戏曲道具"]
+    }
+  ],
+  scene: [
+    {
+      key: "primary",
+      label: "主筛选",
+      options: ["全部", "戏曲空间", "朝堂仪式", "搜证空间", "户外空间"]
     }
   ]
 };
@@ -612,11 +891,16 @@ export const defaultFilters = {
   },
   object: {
     primary: "全部"
+  },
+  scene: {
+    primary: "全部"
   }
 };
 
 export function getExhibits(category) {
-  return category === "character" ? characterExhibits : objectExhibits;
+  if (category === "character") return characterExhibits;
+  if (category === "object") return objectExhibits;
+  return sceneExhibits;
 }
 
 export function getExhibit(category, name) {
@@ -630,7 +914,9 @@ export function getFeaturedExhibit() {
 export function getHomeStats() {
   const characterCount = characterExhibits.length;
   const objectCount = objectExhibits.length;
+  const sceneCount = sceneExhibits.length;
   const readyModels =
-    [...characterExhibits, ...objectExhibits].filter((item) => item.hasModel).length;
-  return { characterCount, objectCount, readyModels };
+    [...characterExhibits, ...objectExhibits, ...sceneExhibits].filter((item) => item.hasModel)
+      .length;
+  return { characterCount, objectCount, sceneCount, readyModels };
 }

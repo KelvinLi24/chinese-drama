@@ -13,13 +13,14 @@ export function createViewer({
   interactionHint
 }) {
   const isCharacter = exhibit.assetCategory === "character";
+  const isScene = exhibit.assetCategory === "scene";
+  const isObject = exhibit.assetCategory === "object";
   const isEvidenceObject =
-    !isCharacter &&
-    ["密信", "密函", "数字档案", "声境碎片"].includes(exhibit.objectType);
+    isObject && ["密信", "密函", "数字档案", "声境碎片"].includes(exhibit.objectType);
   const isDisplayObject =
-    !isCharacter &&
-    ["冠饰", "佩饰", "令牌", "印章"].includes(exhibit.objectType);
-  const isPatternObject = !isCharacter && exhibit.id === "mangpao-buzi-pattern";
+    isObject && ["冠饰", "佩饰", "令牌", "印章"].includes(exhibit.objectType);
+  const isPatternObject = isObject && exhibit.id === "mangpao-buzi-pattern";
+
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
@@ -29,40 +30,44 @@ export function createViewer({
   renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = isScene ? 1.0 : 1.05;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#180908");
-  scene.fog = new THREE.Fog("#180908", 8, 18);
+  scene.fog = new THREE.Fog("#180908", isScene ? 16 : 8, isScene ? 48 : 18);
 
-  const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 120);
-  camera.position.set(0.2, 1.6, 5.8);
+  const camera = new THREE.PerspectiveCamera(isScene ? 44 : 34, 1, 0.1, 180);
+  camera.position.set(0.2, isScene ? 2.4 : 1.6, isScene ? 8.5 : 5.8);
 
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.055;
-  controls.minDistance = 1.1;
-  controls.maxDistance = 14;
-  controls.maxPolarAngle = Math.PI * 0.48;
-  controls.autoRotate = true;
-  controls.autoRotateSpeed = 0.45;
-  let autoRotateEnabled = true;
+  controls.dampingFactor = exhibit.controls?.dampingFactor ?? 0.055;
+  controls.minDistance = exhibit.controls?.minDistance ?? 1.1;
+  controls.maxDistance = exhibit.controls?.maxDistance ?? 14;
+  controls.minPolarAngle = exhibit.controls?.minPolarAngle ?? 0;
+  controls.maxPolarAngle = exhibit.controls?.maxPolarAngle ?? Math.PI * 0.48;
+  controls.enablePan = exhibit.controls?.canPan ?? isScene;
+  controls.enableZoom = exhibit.controls?.canZoom ?? true;
+  controls.enableRotate = exhibit.controls?.canOrbit ?? true;
+  controls.autoRotate = exhibit.controls?.autoRotate ?? !isScene;
+  controls.autoRotateSpeed = isScene ? 0.2 : 0.45;
+  let autoRotateEnabled = controls.autoRotate;
 
   const lights = {
-    ambient: new THREE.AmbientLight("#f8e1c7", 1.55),
-    hemi: new THREE.HemisphereLight("#f4d4b0", "#34100e", 1.45),
-    key: new THREE.DirectionalLight("#ffe4b8", 2.8),
-    fill: new THREE.DirectionalLight("#d4654b", 1.55),
-    rim: new THREE.DirectionalLight("#d5a767", 2.2),
+    ambient: new THREE.AmbientLight("#f8e1c7", isScene ? 1.85 : 1.55),
+    hemi: new THREE.HemisphereLight("#f4d4b0", "#34100e", isScene ? 1.6 : 1.45),
+    key: new THREE.DirectionalLight("#ffe4b8", isScene ? 2.3 : 2.8),
+    fill: new THREE.DirectionalLight("#d4654b", isScene ? 1.1 : 1.55),
+    rim: new THREE.DirectionalLight("#d5a767", isScene ? 1.5 : 2.2),
     mystery: new THREE.DirectionalLight("#4f847f", 0),
-    spot: new THREE.SpotLight("#ffefc7", 5.3, 25, Math.PI * 0.24, 0.5, 1)
+    spot: new THREE.SpotLight("#ffefc7", isScene ? 2.8 : 5.3, 40, Math.PI * 0.24, 0.5, 1)
   };
 
   lights.key.position.set(3.5, 5.4, 4.8);
   lights.fill.position.set(-4.4, 2.8, 3.1);
   lights.rim.position.set(-0.8, 3.6, -4.2);
   lights.mystery.position.set(2.2, 2.3, -2.5);
-  lights.spot.position.set(0, 8.2, 2);
+  lights.spot.position.set(0, isScene ? 10 : 8.2, 2);
   lights.spot.target.position.set(0, 1, 0);
 
   scene.add(
@@ -77,18 +82,19 @@ export function createViewer({
   );
 
   const stageGroup = new THREE.Group();
+
   const carpet = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.92, 2.2, 0.18, 96),
+    new THREE.CylinderGeometry(isScene ? 6.5 : 1.92, isScene ? 6.9 : 2.2, isScene ? 0.08 : 0.18, 96),
     new THREE.MeshStandardMaterial({
-      color: "#761d1d",
+      color: isScene ? "#53201d" : "#761d1d",
       roughness: 0.84,
       metalness: 0.08
     })
   );
-  carpet.position.y = -0.16;
+  carpet.position.y = isScene ? -0.04 : -0.16;
 
   const carpetTrim = new THREE.Mesh(
-    new THREE.TorusGeometry(1.98, 0.045, 24, 160),
+    new THREE.TorusGeometry(isScene ? 6.58 : 1.98, isScene ? 0.06 : 0.045, 24, 160),
     new THREE.MeshStandardMaterial({
       color: "#d4a157",
       metalness: 0.72,
@@ -98,17 +104,17 @@ export function createViewer({
     })
   );
   carpetTrim.rotation.x = Math.PI / 2;
-  carpetTrim.position.y = -0.04;
+  carpetTrim.position.y = isScene ? 0.005 : -0.04;
 
   const stageTop = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.46, 1.6, 0.12, 96),
+    new THREE.CylinderGeometry(isScene ? 5.8 : 1.46, isScene ? 6.15 : 1.6, isScene ? 0.04 : 0.12, 96),
     new THREE.MeshStandardMaterial({
-      color: "#952626",
+      color: isScene ? "#68211e" : "#952626",
       roughness: 0.44,
       metalness: 0.18
     })
   );
-  stageTop.position.y = -0.02;
+  stageTop.position.y = isScene ? 0.015 : -0.02;
 
   const stageBack = new THREE.Mesh(
     new THREE.CylinderGeometry(4.2, 4.2, 5.6, 48, 1, true, Math.PI * 0.16, Math.PI * 0.68),
@@ -121,22 +127,23 @@ export function createViewer({
   );
   stageBack.position.set(0, 2.35, -1.9);
   stageBack.rotation.y = Math.PI;
+  stageBack.visible = !isScene;
 
   const shadowDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(0.86, 80),
+    new THREE.CircleGeometry(isScene ? 2.2 : 0.86, 80),
     new THREE.MeshBasicMaterial({
       color: "#080405",
       transparent: true,
-      opacity: isCharacter ? 0.28 : 0.18
+      opacity: isScene ? 0.12 : isCharacter ? 0.28 : 0.18
     })
   );
   shadowDisc.rotation.x = -Math.PI / 2;
-  shadowDisc.position.y = 0.018;
+  shadowDisc.position.y = isScene ? 0.03 : 0.018;
 
   stageGroup.add(carpet, carpetTrim, stageTop, shadowDisc);
   scene.add(stageGroup, stageBack);
 
-  if (!isCharacter) {
+  if (isObject) {
     const glassCover = new THREE.Mesh(
       new THREE.CylinderGeometry(0.98, 1.08, 2.2, 72, 1, true),
       new THREE.MeshPhysicalMaterial({
@@ -158,15 +165,17 @@ export function createViewer({
   let resizeObserver;
   let modelRoot = null;
   let animationState = null;
-  let lightingMode = isCharacter
-    ? exhibit.isSuspicious
-      ? "darkline"
-      : "stage"
-    : isEvidenceObject
-      ? "darkline"
-      : isDisplayObject
-        ? "soft"
-        : "stage";
+  let lightingMode = isScene
+    ? "stage"
+    : isCharacter
+      ? exhibit.isSuspicious
+        ? "darkline"
+        : "stage"
+      : isEvidenceObject
+        ? "darkline"
+        : isDisplayObject
+          ? "soft"
+          : "stage";
   let currentView = "front";
   let fadeStart = null;
   let fadeMaterials = [];
@@ -174,6 +183,7 @@ export function createViewer({
   const handlePointerDown = () => {
     controls.autoRotate = false;
   };
+
   const handlePointerUp = () => {
     controls.autoRotate = autoRotateEnabled;
   };
@@ -187,7 +197,7 @@ export function createViewer({
   }
 
   function setLoadingText(message) {
-    loadingProgress.textContent = message;
+    if (loadingProgress) loadingProgress.textContent = message;
   }
 
   function showFallback(title, message) {
@@ -215,6 +225,7 @@ export function createViewer({
 
   function applyLighting(mode) {
     lightingMode = mode;
+
     if (mode === "soft") {
       lights.ambient.intensity = 1.95;
       lights.hemi.intensity = 1.4;
@@ -225,6 +236,7 @@ export function createViewer({
       lights.spot.intensity = 3.8;
       return;
     }
+
     if (mode === "darkline") {
       lights.ambient.intensity = 1.15;
       lights.hemi.intensity = 1.0;
@@ -235,77 +247,81 @@ export function createViewer({
       lights.spot.intensity = 4.3;
       return;
     }
-    lights.ambient.intensity = 1.55;
-    lights.hemi.intensity = 1.45;
-    lights.key.intensity = 2.8;
-    lights.fill.intensity = 1.55;
-    lights.rim.intensity = 2.2;
-      lights.mystery.intensity = exhibit.isSuspicious || isEvidenceObject ? 0.36 : 0;
-      lights.spot.intensity = 5.3;
+
+    lights.ambient.intensity = isScene ? 1.85 : 1.55;
+    lights.hemi.intensity = isScene ? 1.6 : 1.45;
+    lights.key.intensity = isScene ? 2.3 : 2.8;
+    lights.fill.intensity = isScene ? 1.1 : 1.55;
+    lights.rim.intensity = isScene ? 1.5 : 2.2;
+    lights.mystery.intensity = exhibit.isSuspicious || isEvidenceObject ? 0.36 : 0;
+    lights.spot.intensity = isScene ? 2.8 : 5.3;
   }
 
   function setView(mode) {
     if (!animationState) return;
-    currentView = mode;
+    currentView = mode === "reset" ? "front" : mode;
+
     const { distance, centerY, targetY } = animationState;
+    const heightOffset = isScene ? distance * 0.12 : 0;
+
     if (mode === "side") {
-      camera.position.set(distance, centerY, distance * 0.08);
+      camera.position.set(distance, centerY + heightOffset, distance * 0.08);
     } else if (mode === "back") {
-      camera.position.set(-distance * 0.12, centerY, -distance);
+      camera.position.set(-distance * 0.12, centerY + heightOffset, -distance);
     } else {
-      camera.position.set(distance * 0.12, centerY, distance);
-      currentView = mode === "reset" ? "front" : mode;
+      camera.position.set(distance * 0.12, centerY + heightOffset, distance);
     }
+
     controls.target.set(0, targetY, 0);
     controls.update();
   }
 
   function prepareModel(object) {
     const box = new THREE.Box3().setFromObject(object);
-    const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
 
     object.position.x = -center.x;
     object.position.z = -center.z;
 
-    const standY = isCharacter ? 0.07 : Math.max(0.42, size.y * 0.18);
-    object.position.y = standY - box.min.y;
+    if (isScene) {
+      object.position.y = -box.min.y + 0.04;
+    } else {
+      const standY = isCharacter ? 0.07 : Math.max(0.42, size.y * 0.18);
+      object.position.y = standY - box.min.y;
+    }
 
     const reframedBox = new THREE.Box3().setFromObject(object);
     const reframedSize = reframedBox.getSize(new THREE.Vector3());
     const reframedCenter = reframedBox.getCenter(new THREE.Vector3());
     const fitHeightDistance =
-      (reframedSize.y * (isCharacter ? 1.34 : 1.52)) /
+      (reframedSize.y * (isScene ? 1.15 : isCharacter ? 1.34 : 1.52)) /
       (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)));
     const fitWidthDistance =
-      (Math.max(reframedSize.x, reframedSize.z) * (isCharacter ? 1.42 : 1.58)) /
+      (Math.max(reframedSize.x, reframedSize.z) * (isScene ? 1.2 : isCharacter ? 1.42 : 1.58)) /
       (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)) * camera.aspect);
-    const distance = Math.max(
-      fitHeightDistance,
-      fitWidthDistance,
-      isCharacter ? 2.8 : isPatternObject ? 2.1 : 2.4
-    );
-    const centerY = reframedCenter.y + reframedSize.y * (isCharacter ? 0.1 : 0.08);
-    const targetY = reframedCenter.y + reframedSize.y * (isCharacter ? 0.05 : 0.02);
+    const minDistance = isScene ? 5.2 : isCharacter ? 2.8 : isPatternObject ? 2.1 : 2.4;
+    const distance = Math.max(fitHeightDistance, fitWidthDistance, minDistance);
+    const centerY = reframedCenter.y + reframedSize.y * (isScene ? 0.18 : isCharacter ? 0.1 : 0.08);
+    const targetY = reframedCenter.y + reframedSize.y * (isScene ? 0.1 : isCharacter ? 0.05 : 0.02);
 
-    camera.position.set(
-      isPatternObject ? 0 : distance * 0.12,
-      centerY,
-      distance
-    );
+    camera.position.set(isPatternObject ? 0 : distance * 0.12, centerY + (isScene ? distance * 0.12 : 0), distance);
     controls.target.set(0, targetY, 0);
-    controls.minDistance = Math.max(0.9, distance * 0.5);
-    controls.maxDistance = distance * 2.35;
+    controls.minDistance = exhibit.controls?.minDistance ?? Math.max(0.9, distance * 0.5);
+    controls.maxDistance = exhibit.controls?.maxDistance ?? distance * 2.35;
     camera.near = Math.max(0.05, distance / 100);
-    camera.far = distance * 14;
+    camera.far = distance * (isScene ? 24 : 14);
     camera.updateProjectionMatrix();
     controls.update();
 
-    shadowDisc.scale.setScalar(Math.min(1.7, Math.max(0.82, Math.max(reframedSize.x, reframedSize.z))));
+    shadowDisc.visible = !isScene;
+    shadowDisc.scale.setScalar(
+      Math.min(isScene ? 3 : 1.7, Math.max(isScene ? 1.8 : 0.82, Math.max(reframedSize.x, reframedSize.z)))
+    );
 
     animationState = {
       baseY: object.position.y,
-      floatAmplitude: isCharacter ? 0 : Math.min(0.1, reframedSize.y * 0.03),
+      floatAmplitude: !isCharacter && !isScene ? Math.min(0.1, reframedSize.y * 0.03) : 0,
       floatSpeed: 0.85,
       distance,
       centerY,
@@ -327,7 +343,7 @@ export function createViewer({
   }
 
   if (!exhibit.hasModel) {
-    showFallback("展品尚未入库", "模型文件暂未完成，请返回档案库查看其他展品。");
+    showFallback("模型暂未就绪", "当前模型无法载入，请返回馆内继续浏览其他档案。");
   } else {
     loader.load(
       exhibit.modelPath,
@@ -348,20 +364,22 @@ export function createViewer({
           loadingOverlay.classList.add("hidden");
         }, 180);
       },
-        (event) => {
-          if (!event.total) {
+      (event) => {
+        if (!event.total) {
           setLoadingText(
-            isCharacter
-              ? "正在为《六国大封相》模型调整灯光、机位与展示姿态。"
-              : "正在为物件调整灯光、机位与展示姿态……"
+            isScene
+              ? "正在载入 3D 场景，并校准机位、灯光与可漫游范围……"
+              : isCharacter
+                ? "正在为人物调整灯光、机位与展示姿态……"
+                : "正在为物件调整灯光、机位与展示姿态……"
           );
-            return;
-          }
-          const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
-          setLoadingText(`模型加载中 ${percent}%`);
+          return;
+        }
+        const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+        setLoadingText(`模型载入中 ${percent}%`);
       },
       () => {
-        showFallback("展品尚未入库", "模型文件暂未完成，请返回档案库查看其他展品。");
+        showFallback("模型暂未就绪", "当前模型无法载入，请返回馆内继续浏览其他档案。");
       }
     );
   }
@@ -377,27 +395,31 @@ export function createViewer({
     frameId = window.requestAnimationFrame(animate);
     const elapsed = clock.getElapsedTime();
 
-      if (modelRoot && animationState) {
-        if (!isCharacter) {
-          modelRoot.position.y =
-            animationState.baseY +
-            Math.sin(elapsed * animationState.floatSpeed) * animationState.floatAmplitude;
-          if (isPatternObject) {
-            modelRoot.rotation.y = 0;
-          }
-        }
+    if (modelRoot && animationState) {
+      if (!isCharacter && !isScene) {
+        modelRoot.position.y =
+          animationState.baseY +
+          Math.sin(elapsed * animationState.floatSpeed) * animationState.floatAmplitude;
+      }
+
+      if (isPatternObject) {
+        modelRoot.rotation.y = 0;
+      }
+
       if (fadeStart) {
         const progress = Math.min(1, (performance.now() - fadeStart) / 680);
         fadeMaterials.forEach((material) => {
           material.opacity = (material.userData.originalOpacity ?? 1) * progress;
-          if (progress >= 1) material.transparent = material.userData.originalOpacity < 1;
+          if (progress >= 1) {
+            material.transparent = material.userData.originalOpacity < 1;
+          }
         });
       }
     }
 
     carpetTrim.rotation.z = Math.sin(elapsed * 0.24) * 0.02;
     lights.spot.intensity =
-      (lightingMode === "soft" ? 3.8 : lightingMode === "darkline" ? 4.3 : 5.3) +
+      (lightingMode === "soft" ? 3.8 : lightingMode === "darkline" ? 4.3 : isScene ? 2.8 : 5.3) +
       Math.sin(elapsed * 1.1) * 0.06;
     controls.update();
     renderer.render(scene, camera);

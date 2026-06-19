@@ -24,14 +24,14 @@ export function createHeroPreview({ canvas, loadingElement }) {
   const key = new THREE.DirectionalLight("#ffe4b5", 2.3);
   const fill = new THREE.DirectionalLight("#ca6048", 1.1);
   const rim = new THREE.DirectionalLight("#d1a25d", 1.85);
-  const mystery = new THREE.DirectionalLight("#5a8a83", 0.38);
+  const accent = new THREE.DirectionalLight("#8b4c24", 0.42);
 
   key.position.set(2.8, 4, 3.6);
   fill.position.set(-3, 1.8, 2.4);
   rim.position.set(-0.5, 3.2, -3.5);
-  mystery.position.set(1.5, 1.6, -2.4);
+  accent.position.set(1.6, 1.4, -2.4);
 
-  scene.add(ambient, hemi, key, fill, rim, mystery);
+  scene.add(ambient, hemi, key, fill, rim, accent);
 
   const stage = new THREE.Mesh(
     new THREE.CylinderGeometry(1.05, 1.18, 0.12, 72),

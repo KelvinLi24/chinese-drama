@@ -1,8 +1,8 @@
 # 粤剧《六国大封相》数字仓库
 
-这是一个纯前端的静态数字仓库页面，用于展示粤剧《六国大封相》的人物与物件，并进入对应的三维展示台。
+这是一个纯前端的静态展陈页面，用于展示粤剧《六国大封相》的人物、物件与场景，并进入对应的三维展示台。
 
-## 目录结构
+## 当前结构
 
 ```text
 .
@@ -12,15 +12,27 @@
 ├─ scripts/
 │  ├─ app.js
 │  ├─ catalog.js
+│  ├─ previewStage.js
 │  └─ viewer.js
 └─ assets/
    ├─ character/
-   └─ object/
+   ├─ object/
+   └─ scene/
 ```
+
+## 功能说明
+
+- 人物馆：人物档案 / 行当名册
+- 物件馆：物件档案 / 道具线索库
+- 场景馆：场景档案 / 三维空间库
+- 使用 `Three.js`、`GLTFLoader`、`OrbitControls`
+- 支持本地 `.glb`、`.png`，凤冠额外支持 `.mp4` 预览
+- 纯静态前端，无后端、无 VR
+- 使用相对路径，兼容本地运行与 GitHub Pages 部署
 
 ## 本地运行
 
-由于 Three.js 模块与 GLB 资源更适合通过本地 HTTP 服务加载，建议不要直接双击 `index.html`，而是启动一个静态服务器。
+由于浏览器通常会限制直接通过 `file://` 读取模块与 GLB，建议使用一个本地静态服务器。
 
 ### 方式一：Python
 
@@ -28,7 +40,7 @@
 python -m http.server 4173
 ```
 
-然后打开：
+打开：
 
 ```text
 http://localhost:4173
@@ -36,30 +48,38 @@ http://localhost:4173
 
 ### 方式二：VS Code Live Server
 
-打开仓库根目录后启动本地静态服务即可。
+直接在项目根目录启动 Live Server 即可。
 
-## GitHub Pages 部署
+## 资源接入规则
 
-当前页面使用相对路径，例如 `./assets/character/NPC.glb`，因此可以直接部署到 GitHub Pages。
+### 人物资源
 
-将仓库根目录作为静态站点发布即可。
+- `assets/character/<名称>.png`
+- `assets/character/<名称>.glb`
 
-## 资源命名规则
+### 物件资源
 
-- 分类清单定义在 `scripts/catalog.js`
-- 人物缩略图与模型使用：
-  - `assets/character/<name>.png`
-  - `assets/character/<name>.glb`
-- 物件缩略图与模型使用：
-  - `assets/object/<name>.png`
-  - `assets/object/<name>.glb`
+- `assets/object/<名称>.png`
+- `assets/object/<名称>.glb`
+- `assets/object/<名称>.mp4`（可选，例如 `凤冠.mp4`）
 
-- 如果缺少 PNG，卡片会自动退回为文字封面。
-- 如果缺少 GLB，展示台会显示友好的不可用提示。
+### 场景资源
 
-## 说明
+- `assets/scene/<名称>.png`
+- `assets/scene/<名称>.glb`
 
-- 使用 `Three.js`、`GLTFLoader` 与 `OrbitControls`
-- 无后端
-- 无 VR 模式
-- 封面过渡页与三维展示台都包含在同一个独立前端页面中
+## 当前已接入场景
+
+- `序章粤剧剧场`
+- `封相朝堂`
+- `院子`
+
+## 部署到 GitHub Pages
+
+本项目使用相对路径，例如：
+
+- `./assets/character/NPC.glb`
+- `./assets/object/凤冠.mp4`
+- `./assets/scene/封相朝堂.glb`
+
+因此可以直接作为静态站点部署到 GitHub Pages，无需改写资源前缀。
