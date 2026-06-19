@@ -57,6 +57,13 @@ const sceneAssetMap = {
   院子: { imagePath: assetPath("scene", "院子", "png"), modelPath: assetPath("scene", "院子", "glb") }
 };
 
+const panoramaAssetMap = {
+  "粤剧戏棚 360": { imagePath: assetPath("scene", "粤剧戏棚360", "png") },
+  "封相朝堂 360": { imagePath: assetPath("scene", "封相朝堂360", "png") },
+  "书房密室 360": { imagePath: assetPath("scene", "书房密室360", "png") },
+  "序章粤剧剧场 360": { imagePath: assetPath("scene", "序章粤剧剧场360", "png") }
+};
+
 export const characterExhibits = [
   {
     id: "npc",
@@ -811,10 +818,156 @@ export const sceneExhibits = [
   return {
     ...exhibit,
     assetCategory: "scene",
+    viewMode: "model",
     imagePath: assets.imagePath ?? "",
     modelPath: assets.modelPath ?? "",
     hasModel: Boolean(assets.modelPath),
     archiveState: assets.modelPath ? "已接入场景" : "待补充场景"
+  };
+});
+
+export const panoramaScenes = [
+  {
+    id: "opera-stage-360",
+    name: "粤剧戏棚 360",
+    category: "360全景",
+    sceneGroup: "戏曲空间",
+    sceneType: "360 全景 / 戏棚场景",
+    viewMode: "panorama",
+    role: "用于全屏观赏粤剧戏棚空间氛围",
+    description: "以 360 全景方式呈现粤剧戏棚的舞台、观演空间与戏曲声景氛围。",
+    soundscape: ["锣鼓点", "戏棚环境声", "观演空间混响"],
+    soundscapeScene: "戏棚全景",
+    defaultView: { yaw: 0, pitch: 0, fov: 75 },
+    hotspots: [
+      {
+        id: "opera-stage-center-360",
+        label: "戏台中央",
+        type: "观察点",
+        description: "面向戏台中央时，能最直接感受到舞台与观演关系的正轴结构。 "
+      },
+      {
+        id: "opera-percussion-360",
+        label: "锣鼓位",
+        type: "声景点",
+        description: "适合联想戏棚节奏如何带动人物上场、亮相与氛围起伏。"
+      },
+      {
+        id: "opera-audience-360",
+        label: "观演区",
+        type: "空间线索",
+        description: "从观演区回望戏台，可感受戏棚前后台与声场的完整关系。"
+      }
+    ]
+  },
+  {
+    id: "court-360",
+    name: "封相朝堂 360",
+    category: "360全景",
+    sceneGroup: "朝堂仪式",
+    sceneType: "360 全景 / 封相仪式场景",
+    viewMode: "panorama",
+    role: "用于全屏观赏六国封相大典的朝堂空间",
+    description: "以 360 全景方式呈现封相朝堂、六国席位、相印与仪式空间秩序。",
+    soundscape: ["朝堂回声", "封相锣鼓点", "人群朝拜声"],
+    soundscapeScene: "朝堂全景",
+    defaultView: { yaw: 0.1, pitch: 0, fov: 75 },
+    hotspots: [
+      {
+        id: "court-seals-360",
+        label: "六国相印",
+        type: "仪式点",
+        description: "可从全景视角观察权力信物如何构成封相大礼的视觉核心。"
+      },
+      {
+        id: "court-lords-360",
+        label: "诸侯席位",
+        type: "观察点",
+        description: "适合比较六国诸侯的空间距离与礼制站位关系。"
+      },
+      {
+        id: "court-side-door-360",
+        label: "朝堂侧门",
+        type: "空间线索",
+        description: "礼制之外的信息流动，常常从不在正中的门口开始。"
+      }
+    ]
+  },
+  {
+    id: "study-360",
+    name: "书房密室 360",
+    category: "360全景",
+    sceneGroup: "搜证空间",
+    sceneType: "360 全景 / 搜证暗线场景",
+    viewMode: "panorama",
+    role: "用于全屏观察密室中的线索与悬疑氛围",
+    description: "以 360 全景方式呈现书房密室、密信、令牌、暗格与搜证动线。",
+    soundscape: ["低频疑云", "翻信纸声", "烛火声"],
+    soundscapeScene: "密室全景",
+    defaultView: { yaw: -0.18, pitch: 0, fov: 75 },
+    hotspots: [
+      {
+        id: "study-letter-360",
+        label: "密信残页",
+        type: "线索点",
+        description: "信纸边缘、散落角度与桌面痕迹常能提示谁先一步到过这里。"
+      },
+      {
+        id: "study-token-360",
+        label: "朝堂令牌",
+        type: "观察点",
+        description: "将书房中的令牌与朝堂仪式空间对照，能看见权力如何离开正殿。"
+      },
+      {
+        id: "study-hidden-box-360",
+        label: "暗格",
+        type: "空间线索",
+        description: "暗格不仅是藏物的位置，也是剧情被暂时压住的地方。"
+      }
+    ]
+  },
+  {
+    id: "prologue-theatre-360",
+    name: "序章粤剧剧场 360",
+    category: "360全景",
+    sceneGroup: "戏曲空间",
+    sceneType: "360 全景 / 序章剧场场景",
+    viewMode: "panorama",
+    role: "用于作为玩家进入《六国大封相》前的全景序章空间",
+    description: "以 360 全景方式连接现实观演与虚拟入戏，让玩家从看戏人转为戏中人。",
+    soundscape: ["剧场低语", "开场锣鼓", "空间混响"],
+    soundscapeScene: "序章全景",
+    defaultView: { yaw: 0, pitch: 0, fov: 75 },
+    hotspots: [
+      {
+        id: "prologue-entry-360",
+        label: "入戏入口",
+        type: "空间线索",
+        description: "站在这里，最能感受到观众身份向戏中人身份转变的临界点。"
+      },
+      {
+        id: "prologue-stage-360",
+        label: "序章舞台",
+        type: "观察点",
+        description: "适合先对准舞台主体，建立进入戏中世界的第一视角。"
+      },
+      {
+        id: "prologue-audience-360",
+        label: "观众视角",
+        type: "声景点",
+        description: "从观众席位回望舞台，可以感受到剧场混响与入戏前的等待感。"
+      }
+    ]
+  }
+].map((scene) => {
+  const assets = panoramaAssetMap[scene.name] ?? {};
+  return {
+    ...scene,
+    assetCategory: "scene",
+    imagePath: assets.imagePath ?? "",
+    modelPath: "",
+    hasModel: Boolean(assets.imagePath),
+    archiveState: assets.imagePath ? "已接入全景" : "待补充全景"
   };
 });
 
@@ -840,10 +993,10 @@ export const categoryMeta = {
   scene: {
     label: "场景馆",
     shortLabel: "场景",
-    eyebrow: "场景档案 / 三维空间库",
-    description: "以真实场景模型进入戏棚、朝堂与院落，观看《六国大封相》的空间叙事。",
+    eyebrow: "场景档案 / 三维与全景空间库",
+    description: "在 3D 场景与 360 全景之间切换，分别浏览戏棚、朝堂、密室与院落空间。",
     introTitle: "场景档案",
-    introText: "可进入本地 3D 场景自由观察，适合浏览封相仪式与搜证动线。",
+    introText: "可切换进入 3D 场景或 360 全景，分别浏览空间结构与沉浸式环视画面。",
     archiveLabel: "场景档案总览"
   }
 };
@@ -878,6 +1031,11 @@ export const filterConfigs = {
       key: "primary",
       label: "主筛选",
       options: ["全部", "戏曲空间", "朝堂仪式", "搜证空间", "户外空间"]
+    },
+    {
+      key: "mode",
+      label: "浏览模式",
+      options: ["全部", "3D 场景", "360 全景"]
     }
   ]
 };
@@ -893,14 +1051,15 @@ export const defaultFilters = {
     primary: "全部"
   },
   scene: {
-    primary: "全部"
+    primary: "全部",
+    mode: "全部"
   }
 };
 
 export function getExhibits(category) {
   if (category === "character") return characterExhibits;
   if (category === "object") return objectExhibits;
-  return sceneExhibits;
+  return [...sceneExhibits, ...panoramaScenes];
 }
 
 export function getExhibit(category, name) {
@@ -914,9 +1073,11 @@ export function getFeaturedExhibit() {
 export function getHomeStats() {
   const characterCount = characterExhibits.length;
   const objectCount = objectExhibits.length;
-  const sceneCount = sceneExhibits.length;
+  const sceneCount = sceneExhibits.length + panoramaScenes.length;
   const readyModels =
-    [...characterExhibits, ...objectExhibits, ...sceneExhibits].filter((item) => item.hasModel)
+    [...characterExhibits, ...objectExhibits, ...sceneExhibits, ...panoramaScenes].filter(
+      (item) => item.hasModel
+    )
       .length;
   return { characterCount, objectCount, sceneCount, readyModels };
 }

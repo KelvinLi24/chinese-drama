@@ -266,6 +266,60 @@
       </section>
     </template>
 
+    <template id="panorama-template">
+      <section class="panorama-viewer">
+        <canvas class="panorama-canvas" id="panoramaCanvas" aria-label="360 全景画布"></canvas>
+
+        <button class="panorama-back-button" id="panoramaBackButton" type="button">
+          ← 返回场景馆
+        </button>
+
+        <div class="loading-overlay" id="panoramaLoading">
+          <div class="loading-card">
+            <div class="ring-loader">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <p class="loading-title">正在加载 360 全景...</p>
+            <p class="loading-progress">
+              当前为 360 全景观赏模式，可拖动视角环视空间。
+            </p>
+          </div>
+        </div>
+
+        <div class="error-overlay hidden" id="panoramaError">
+          <div class="error-card">
+            <h3 id="panoramaErrorTitle">360 全景加载失败</h3>
+            <p id="panoramaErrorMessage">360 全景加载失败，请检查图片路径。</p>
+            <button class="primary-button" type="button" id="panoramaErrorBackButton">返回场景馆</button>
+          </div>
+        </div>
+
+        <article class="panorama-floating-card panorama-info-card">
+          <p class="eyebrow">360 全景</p>
+          <h2 class="panorama-title" id="panoramaTitle"></h2>
+          <p class="panorama-meta" id="panoramaMeta"></p>
+          <p id="panoramaDescription"></p>
+          <div class="panorama-tags" id="panoramaTags"></div>
+          <p class="panorama-footnote">此模式用于沉浸式观看场景，不支持自由移动。</p>
+        </article>
+
+        <aside class="panorama-floating-card panorama-hotspot-card">
+          <h3>空间热点</h3>
+          <div class="panorama-hotspot-list" id="panoramaHotspotList"></div>
+        </aside>
+
+        <aside class="panorama-floating-card panorama-help-card">
+          <h3>操作提示</h3>
+          <p>拖动：环视空间</p>
+          <p>滚轮：缩放视野</p>
+          <p>双击：重置视角</p>
+          <p>ESC：返回场景馆</p>
+        </aside>
+      </section>
+    </template>
+
     <script type="module" src="./scripts/app.js"></script>
   </body>
 </html>

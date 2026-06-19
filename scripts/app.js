@@ -7,6 +7,7 @@ import {
   getFeaturedExhibit,
   getHomeStats
 } from "./catalog.js";
+import { createPanoramaViewer } from "./panoramaViewer.js";
 import { createHeroPreview } from "./previewStage.js";
 import { createViewer } from "./viewer.js";
 
@@ -47,6 +48,7 @@ function cleanupViewer() {
     window.clearTimeout(introTimeoutId);
     introTimeoutId = null;
   }
+  document.body.classList.remove("panorama-mode");
   viewerInstance?.dispose();
   viewerInstance = null;
   heroPreviewInstance?.dispose();
@@ -171,6 +173,24 @@ function renderFilters(category) {
   }
 
   rack.appendChild(renderPrimaryFilterSection("scene", "data-clear-scene-filters"));
+
+  const modeGroup = filterConfigs.scene[1];
+  const section = document.createElement("section");
+  section.className = "filter-group filter-group-advanced";
+
+  const label = document.createElement("span");
+  label.className = "filter-label";
+  label.textContent = modeGroup.label;
+
+  const chips = document.createElement("div");
+  chips.className = "filter-chips";
+  chips.dataset.scrollKey = "scene-mode";
+  modeGroup.options
+    .map((option) => createFilterButton("mode", option, pageState.filters.scene.mode))
+    .forEach((button) => chips.appendChild(button));
+
+  section.append(label, chips);
+  rack.appendChild(section);
   restoreFilterScrollPositions();
 }
 
@@ -216,7 +236,10 @@ function matchObject(exhibit, filters) {
 }
 
 function matchScene(exhibit, filters) {
-  return filters.primary === "全部" || exhibit.sceneGroup === filters.primary;
+  if (filters.primary !== "全部" && exhibit.sceneGroup !== filters.primary) return false;
+  if (filters.mode === "3D 场景" && exhibit.viewMode !== "model") return false;
+  if (filters.mode === "360 全景" && exhibit.viewMode !== "panorama") return false;
+  return true;
 }
 
 function getFilteredExhibits(category) {
@@ -360,7 +383,7 @@ function buildSceneCard(exhibit) {
   const head = document.createElement("div");
   head.className = "card-head";
   head.append(buildStamp(exhibit.sceneGroup, "camp-stamp"));
-  head.append(buildStamp(exhibit.sceneType, "stamp-key"));
+  head.append(buildStamp(exhibit.viewMode === "panorama" ? "360 全景" : "3D 场景", `scene-mode-badge ${exhibit.viewMode === "panorama" ? "panorama" : "model"}`));
 
   const meta = document.createElement("div");
   meta.className = "asset-meta rich-meta";
@@ -376,7 +399,7 @@ function buildSceneCard(exhibit) {
     </div>
     <div class="card-footer">
       <span class="archive-state">${exhibit.archiveState}</span>
-      <span class="cta-text">进入场景</span>
+      <span class="cta-text">${exhibit.viewMode === "panorama" ? "全屏观赏" : "进入 3D 场景"}</span>
     </div>
   `;
 
@@ -641,6 +664,20 @@ function buildInfoPanel(exhibit) {
   `;
 }
 
+function buildPanoramaFloatingHotspots(hotspots = []) {
+  return hotspots
+    .map(
+      (hotspot) => `
+        <div class="panorama-hotspot-item">
+          <strong>${hotspot.label}</strong>
+          <span>${hotspot.type}</span>
+          <p>${hotspot.description}</p>
+        </div>
+      `
+    )
+    .join("");
+}
+
 function syncViewerControlState() {
   if (!viewerInstance) return;
   document.querySelectorAll("[data-lighting]").forEach((button) => {
@@ -663,6 +700,14 @@ function applyViewerCopy(exhibit) {
 }
 
 function getIntroCopy(exhibit) {
+  if (exhibit.viewMode === "panorama") {
+    return {
+      eyebrow: "360 全景",
+      title: `${exhibit.name} 已开启`,
+      text: "全景画面已准备完成，进入后可拖动环视空间，沉浸式观看场景。"
+    };
+  }
+
   if (exhibit.assetCategory === "scene") {
     return {
       eyebrow: "场景档案",
@@ -686,9 +731,63 @@ function getIntroCopy(exhibit) {
   };
 }
 
+function renderPanorama(category, exhibit) {
+  cleanupViewer();
+  pageState.currentCategory = category;
+  pageState.currentExhibit = exhibit;
+  document.body.classList.add("panorama-mode");
+  app.replaceChildren(document.querySelector("#panorama-template").content.cloneNode(true));
+  globalBackButton.classList.add("hidden");
+
+  document.querySelector("#panoramaTitle").textContent = exhibit.name;
+  document.querySelector("#panoramaMeta").textContent = exhibit.sceneType;
+  document.querySelector("#panoramaDescription").textContent = exhibit.description;
+  document.querySelector("#panoramaTags").innerHTML = exhibit.soundscape
+    .map((tag) => `<span class="panorama-tag">${tag}</span>`)
+    .join("");
+  document.querySelector("#panoramaHotspotList").innerHTML = buildPanoramaFloatingHotspots(
+    exhibit.hotspots
+  );
+
+  const backToSceneLibrary = () => navigateTo(`#category/${category}`);
+  const backButton = document.querySelector("#panoramaBackButton");
+  const errorBackButton = document.querySelector("#panoramaErrorBackButton");
+  const canvas = document.querySelector("#panoramaCanvas");
+
+  const escHandler = (event) => {
+    if (event.key === "Escape") {
+      backToSceneLibrary();
+    }
+  };
+
+  backButton.addEventListener("click", backToSceneLibrary);
+  errorBackButton?.addEventListener("click", backToSceneLibrary);
+  window.addEventListener("keydown", escHandler);
+
+  viewerInstance = createPanoramaViewer({
+    canvas,
+    sceneData: exhibit,
+    loadingOverlay: document.querySelector("#panoramaLoading"),
+    errorOverlay: document.querySelector("#panoramaError"),
+    errorTitle: document.querySelector("#panoramaErrorTitle"),
+    errorMessage: document.querySelector("#panoramaErrorMessage"),
+    onBack: backToSceneLibrary
+  });
+
+  const originalDispose = viewerInstance.dispose.bind(viewerInstance);
+  viewerInstance.dispose = () => {
+    window.removeEventListener("keydown", escHandler);
+    originalDispose();
+  };
+}
+
 function renderViewer(category, name) {
   cleanupViewer();
   const exhibit = getExhibit(category, name) ?? getFeaturedExhibit();
+  if (exhibit.viewMode === "panorama") {
+    renderPanorama(category, exhibit);
+    return;
+  }
   pageState.currentCategory = category;
   pageState.currentExhibit = exhibit;
 
