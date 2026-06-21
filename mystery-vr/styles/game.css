@@ -1,9 +1,9 @@
 ﻿:root {
   color-scheme: dark;
   --bg: #120708;
-  --panel: rgba(20, 10, 11, 0.66);
+  --panel: rgba(20, 10, 11, 0.7);
   --panel-strong: rgba(28, 12, 13, 0.92);
-  --line: rgba(212, 169, 101, 0.24);
+  --line: rgba(212, 169, 101, 0.22);
   --line-strong: rgba(212, 169, 101, 0.44);
   --text: #f5ead6;
   --text-soft: #d9c6a8;
@@ -26,7 +26,7 @@ body {
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', 'Source Han Sans SC', sans-serif;
 }
 
 body {
@@ -34,7 +34,8 @@ body {
 }
 
 button,
-a {
+a,
+input {
   font: inherit;
 }
 
@@ -60,6 +61,8 @@ a {
   width: 100%;
   height: 100%;
   display: block;
+  position: relative;
+  z-index: 1;
 }
 
 .reticle {
@@ -75,7 +78,7 @@ a {
 
 .reticle::before,
 .reticle::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -95,7 +98,7 @@ a {
 .game-overlay {
   position: absolute;
   inset: 0;
-  z-index: 20;
+  z-index: 120;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -106,7 +109,7 @@ a {
 .launch-card,
 .opening-card,
 .overlay-card {
-  width: min(760px, calc(100vw - 32px));
+  width: min(780px, calc(100vw - 32px));
   padding: 34px;
   border-radius: var(--radius-xl);
   border: 1px solid var(--line);
@@ -118,6 +121,31 @@ a {
 
 .story-card {
   max-width: 640px;
+}
+
+.video-card {
+  max-width: 900px;
+}
+
+.prologue-video,
+.inspect-video,
+.inspect-image {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 169, 101, 0.14);
+  background: rgba(255, 242, 221, 0.03);
+}
+
+.prologue-video {
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.inspect-video,
+.inspect-image {
+  max-height: 260px;
+  object-fit: contain;
+  margin-bottom: 12px;
 }
 
 .launch-eyebrow,
@@ -134,7 +162,7 @@ a {
 .overlay-card h3,
 .floating-panel h3 {
   margin: 0;
-  font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
 }
 
 .launch-card h1 {
@@ -168,6 +196,10 @@ a {
   margin-top: 22px;
 }
 
+.launch-actions.compact {
+  margin-top: 16px;
+}
+
 .launch-button,
 .mini-button {
   display: inline-flex;
@@ -180,6 +212,12 @@ a {
   background: linear-gradient(180deg, rgba(129, 29, 28, 0.96), rgba(74, 16, 15, 0.96));
   color: #fff5e7;
   cursor: pointer;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.launch-button:hover,
+.mini-button:hover {
+  transform: translateY(-1px);
 }
 
 .launch-button.secondary,
@@ -207,11 +245,12 @@ a {
 
 .hud-panel,
 .interaction-prompt,
-.control-hint,
+.controlHint,
 .status-toast,
 .floating-panel,
 .world-hint,
-.debug-panel {
+.debug-panel,
+.control-hint {
   border-radius: var(--radius-lg);
   border: 1px solid var(--line);
   background: var(--panel);
@@ -238,15 +277,11 @@ a {
   z-index: 9;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   padding: 8px 12px;
   color: #f7e2be;
   font-size: 0.92rem;
-}
-
-.prompt-action {
-  color: var(--gold);
-  font-weight: 700;
+  min-width: 220px;
 }
 
 .world-hint {
@@ -295,8 +330,8 @@ a {
   position: absolute;
   top: 116px;
   right: 16px;
-  z-index: 9;
-  max-width: 340px;
+  z-index: 11;
+  max-width: 360px;
   padding: 10px 14px;
   color: #f8e4bf;
   opacity: 0;
@@ -319,20 +354,23 @@ a {
   position: absolute;
   left: 16px;
   bottom: 18px;
-  z-index: 11;
-  width: min(360px, calc(100vw - 32px));
+  z-index: 12;
+  width: min(380px, calc(100vw - 32px));
   padding: 12px 14px;
   font-size: 0.82rem;
   line-height: 1.6;
   color: #f0d9b0;
+  overflow: auto;
+  max-height: 48vh;
 }
 
 .floating-panel {
   position: absolute;
-  z-index: 10;
+  z-index: 15;
   width: min(420px, calc(100vw - 32px));
   padding: 18px;
   overflow: auto;
+  pointer-events: auto;
 }
 
 .archive-panel,
@@ -406,22 +444,8 @@ a {
   line-height: 1.72;
 }
 
-.scene-map-card button {
-  margin-top: 10px;
-}
-
 .dialogue-responses button {
   flex: 1 1 220px;
-}
-
-.inspect-image {
-  width: 100%;
-  max-height: 220px;
-  object-fit: contain;
-  border-radius: 14px;
-  border: 1px solid rgba(212, 169, 101, 0.14);
-  background: rgba(255, 242, 221, 0.03);
-  margin-bottom: 12px;
 }
 
 .help-grid {
@@ -448,7 +472,7 @@ a {
   border-radius: 50%;
   border: 2px solid rgba(212, 169, 101, 0.18);
   border-top-color: rgba(244, 214, 161, 0.95);
-  margin-bottom: 14px;
+  margin: 0 auto 14px;
   animation: spin 0.9s linear infinite;
 }
 
@@ -511,8 +535,7 @@ a {
   }
 
   .interaction-prompt {
-    bottom: 74px;
-    justify-content: center;
+    bottom: 78px;
   }
 
   .status-toast,
@@ -533,9 +556,6 @@ a {
     top: auto;
     bottom: 206px;
   }
-
-  .world-hint {
-    min-width: 150px;
-    font-size: 0.84rem;
-  }
 }
+
+

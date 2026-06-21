@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>《六国大封相：声境谜局》</title>
+    <title>《六国大封相：第七声锣》</title>
     <meta
       name="description"
-      content="基于 Three.js 与 WebXR 的前端沉浸式粤剧剧本杀原型，围绕《六国大封相》的封相朝堂、戏棚与线索搜证展开。"
+      content="基于 Three.js 与 WebXR 的前端沉浸式粤剧剧本杀模块，围绕《六国大封相》的序章剧场、封相朝堂、院子与书房密室展开调查。"
     />
     <link rel="stylesheet" href="./styles/game.css" />
     <link rel="icon" href="data:," />
@@ -21,18 +21,17 @@
   </head>
   <body>
     <div id="gameApp" class="game-app">
-      <canvas id="gameCanvas" aria-label="《六国大封相：声境谜局》实时场景"></canvas>
+      <canvas id="gameCanvas" aria-label="《六国大封相：第七声锣》实时场景"></canvas>
       <div id="reticle" class="reticle" aria-hidden="true"></div>
       <div id="worldHint" class="world-hint hidden"></div>
 
       <section id="launchScreen" class="launch-screen">
         <div class="launch-card">
-          <p class="launch-eyebrow">粤剧沉浸式剧本杀 · WebXR 原型</p>
-          <h1>《六国大封相：声境谜局》</h1>
+          <p class="launch-eyebrow">粤剧沉浸式剧本杀 · WebXR 模块</p>
+          <h1>《六国大封相：第七声锣》</h1>
           <p class="launch-copy">
-            你将以苏秦视角踏入封相朝堂，在礼乐、印信、密函与声景碎片之间调查一场被盛典掩住的权谋异动。
-            <br />
-            桌面模式可直接探索；兼容设备可继续进入 WebXR VR 模式。
+            你将从看戏人步入戏中局，以苏秦视角穿过序章剧场、封相朝堂、院子与书房密室，
+            追查那道不该出现在第七声锣之后的封门暗令。
           </p>
           <div class="launch-actions">
             <button id="startButton" class="launch-button" type="button">开始探索</button>
@@ -41,25 +40,37 @@
             <a class="launch-button secondary" href="../main-site/index.html">返回资料馆</a>
           </div>
           <p id="xrSupportLabel" class="support-copy">
-            桌面模式可直接开始。若设备与浏览器支持 WebXR，将显示“进入 VR 模式”按钮。
+            桌面模式可直接进入；若设备与浏览器支持 WebXR，将显示“进入 VR 模式”按钮。
           </p>
+        </div>
+      </section>
+
+      <section id="videoOverlay" class="game-overlay hidden">
+        <div class="overlay-card video-card">
+          <p class="panel-eyebrow">序章影片</p>
+          <video id="prologueVideo" class="prologue-video" playsinline preload="auto"></video>
+          <p id="videoStatus" class="panel-stats">正在聆听第七声锣……</p>
+          <div class="launch-actions compact">
+            <button id="skipVideoButton" class="launch-button secondary" type="button">跳过序章</button>
+            <button id="fallbackVideoButton" class="launch-button secondary" type="button">视频异常，直接进入剧场</button>
+          </div>
         </div>
       </section>
 
       <section id="storyPrompt" class="story-prompt hidden">
         <div class="opening-card story-card">
-          <p class="panel-eyebrow">入殿提示</p>
-          <h2>封相朝堂</h2>
+          <p class="panel-eyebrow">入场提示</p>
+          <h2 id="storyPromptTitle">封相朝堂</h2>
           <div id="storyPromptBody" class="opening-lines"></div>
-          <button id="storyPromptButton" class="launch-button secondary" type="button">继续入殿</button>
+          <button id="storyPromptButton" class="launch-button secondary" type="button">继续探索</button>
         </div>
       </section>
 
       <div id="loadingOverlay" class="game-overlay hidden">
         <div class="overlay-card loading-card">
           <div class="loader-ring"></div>
-          <h3>正在重构封相大典的声境记忆……</h3>
-          <p id="loadingText">正在重构封相大典的声境记忆……</p>
+          <h3>正在重构戏中声境……</h3>
+          <p id="loadingText">正在调入场景资源……</p>
         </div>
       </div>
 
@@ -73,8 +84,8 @@
 
       <header id="gameHud" class="game-hud hidden">
         <div class="hud-panel hud-left">
-          <p>当前场景：<strong id="hudScene">封相朝堂</strong></p>
-          <p>当前目标：<strong id="hudObjective">先靠近公孙衍，确认朝堂中的第一处异常。</strong></p>
+          <p>当前场景：<strong id="hudScene">序章粤剧剧场</strong></p>
+          <p>当前目标：<strong id="hudObjective">靠近引路伶人，确认你的身份与第一步调查目标。</strong></p>
         </div>
         <div class="hud-panel hud-right">
           <p>已收集线索：<strong id="hudClueCount">0 / 12</strong></p>
@@ -85,7 +96,7 @@
       <div id="interactionPrompt" class="interaction-prompt hidden">[E] 调查</div>
 
       <footer id="controlHint" class="control-hint hidden">
-        WASD 移动 · 鼠标转动视角 · E 调查 · I 线索档案 · M 场景地图 · Esc 暂停
+        WASD 移动 · 鼠标观察 · E 互动 · F 视角切换 · Space 跳跃 · 双击 Space 高跳 · I 线索档案 · M 场景地图 · Esc 暂停
       </footer>
 
       <aside id="statusToast" class="status-toast"></aside>
@@ -108,12 +119,12 @@
       <section id="mapPanel" class="floating-panel map-panel hidden">
         <div class="panel-header">
           <div>
-            <p class="panel-eyebrow">场景图</p>
+            <p class="panel-eyebrow">场景地图</p>
             <h3>已解锁区域</h3>
           </div>
           <button id="mapCloseButton" class="mini-button" type="button">关闭</button>
         </div>
-        <p class="panel-stats">可在这里快速切换已开放的七个场景。</p>
+        <p class="panel-stats">仅显示已解锁的正式调查场景。</p>
         <div id="sceneMapList" class="scene-map-list"></div>
       </section>
 
@@ -156,6 +167,7 @@
           </div>
           <button id="inspectCloseButton" class="mini-button" type="button">关闭</button>
         </div>
+        <video id="inspectVideo" class="inspect-video hidden" playsinline muted controls loop></video>
         <img id="inspectImage" class="inspect-image hidden" alt="线索预览图" />
         <p id="inspectMeta" class="panel-stats"></p>
         <div id="inspectBody" class="inspect-body"></div>
@@ -172,20 +184,21 @@
         <div class="help-grid">
           <p>W / A / S / D：地面移动</p>
           <p>Shift：短时加速</p>
-          <p>鼠标转动：切换视角</p>
-          <p>E：调查 / 对话</p>
-          <p>F：切换第一 / 第三人称</p>
-          <p>I：打开线索档案</p>
-          <p>M：打开场景图</p>
-          <p>Esc：暂停或关闭面板</p>
-          <p>R：重置站位</p>
+          <p>鼠标：观察视角</p>
+          <p>E：互动 / 调查 / 交谈</p>
+          <p>F：第一 / 第三人称切换</p>
+          <p>Space：普通跳跃</p>
+          <p>双击 Space：高跳</p>
+          <p>I：线索档案</p>
+          <p>M：场景地图</p>
+          <p>Esc：暂停 / 关闭当前面板</p>
+          <p>R：重置当前位置</p>
           <p>~：开发调试模式</p>
-          <p>VR 右手扳机：交互</p>
-          <p>左摇杆：移动 · 右摇杆：转向</p>
+          <p>VR 左摇杆移动 · 右摇杆转向 · 扳机互动</p>
         </div>
       </section>
     </div>
 
-    <script type="module" src="./scripts/main.js?v=20260621-06"></script>
+    <script type="module" src="./scripts/main.js?v=20260621-08"></script>
   </body>
 </html>

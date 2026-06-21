@@ -1,115 +1,156 @@
-﻿import * as THREE from "three";
-import { sampleFloorPoint } from "./game-engine.js";
-import { createCharacterActor } from "./npc-system.js";
+﻿import * as THREE from 'three';
+import { sampleFloorPoint } from './game-engine.js';
+import { createCharacterActor } from './npc-system.js';
+import { MODEL_CALIBRATION } from './data/model-calibration.js';
+
+function rotateTowardsAngle(current, target, maxStep) {
+  let delta = target - current;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  if (Math.abs(delta) <= maxStep) return target;
+  return current + Math.sign(delta) * maxStep;
+}
+
+function copyScale(target, source, multiplier = 1) {
+  if (!target || !source) return;
+  target.copy(source).multiplyScalar(multiplier);
+}
 
 export class PlayerController {
-  constructor({ engine, manifest, hudNotice }) {
+  constructor({ engine, manifest, hudNotice, canCapturePointer = null }) {
     this.engine = engine;
     this.manifest = manifest;
     this.hudNotice = hudNotice;
+    this.canCapturePointer = canCapturePointer;
+
+    this.settings = MODEL_CALIBRATION.player;
     this.keys = new Set();
-    this.viewMode = "firstPerson";
+    this.viewMode = 'firstPerson';
+    this.sceneConfig = null;
+    this.sceneId = '';
     this.yaw = Math.PI;
     this.pitch = -0.06;
-    this.mouseDragActive = false;
-    this.sceneConfig = null;
-    this.speed = 2.55;
-    this.runMultiplier = 1.58;
-    this.eyeHeight = 1.67;
+    this.cameraYaw = Math.PI;
+    this.cameraPitch = -0.24;
+    this.eyeHeight = 1.68;
     this.movementLocked = false;
+    this.verticalVelocity = 0;
+    this.isGrounded = true;
+    this.jumpUpgraded = false;
+    this.lastSpacePressTime = 0;
+    this.lastMovementDirection = new THREE.Vector3();
     this.floorPoint = new THREE.Vector3();
-    this.lastValidPosition = new THREE.Vector3(0, 0, 0);
+    this.cameraLookTarget = new THREE.Vector3();
+    this.currentAnimationName = '静止';
 
     this.playerRoot = new THREE.Group();
-    this.playerRoot.position.set(0, 0, 0);
-
-    this.placeholder = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.25, 0.95, 8, 16),
-      new THREE.MeshStandardMaterial({
-        color: "#d8ab63",
-        roughness: 0.66,
-        metalness: 0.08
-      })
-    );
-    this.placeholder.position.y = 0.8;
-    this.playerRoot.add(this.placeholder);
     this.engine.addWorldObject(this.playerRoot);
 
+    this.placeholder = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.24, 0.96, 8, 16),
+      new THREE.MeshStandardMaterial({ color: '#d8ab63', roughness: 0.68, metalness: 0.08 })
+    );
+    this.placeholder.position.y = 0.86;
+    this.playerRoot.add(this.placeholder);
+
     this.visualActor = null;
-    this.isUsingPlaceholder = true;
-    this.currentActorAction = null;
-    this._setupInput();
+    this.staticActor = null;
+    this.currentBodyMode = 'hidden';
+    this._bindInput();
   }
 
   async init() {
-    const actor = await createCharacterActor({
+    this.visualActor = await createCharacterActor({
       manifest: this.manifest.player,
       engine: this.engine,
-      fallbackColor: "#d8ab63"
+      fallbackColor: '#d8ab63'
     });
 
-    const hasAnimations = actor.animationNames.length > 0;
-    const shouldUseActor = hasAnimations || !this.manifest.player.usePlaceholderWhenNoAnimation;
-
-    if (shouldUseActor) {
-      this.visualActor = actor;
-      this.placeholder.visible = false;
-      actor.root.position.set(0, actor.root.userData.groundLift ?? actor.root.position.y, 0);
-      this.playerRoot.add(actor.root);
-      this.isUsingPlaceholder = false;
-      if (!hasAnimations) {
-        this.showNotice("当前苏秦模型未附带动作动画，先以静态站姿进入朝堂。", 3200);
-      }
-      this._playActorAction("idle", true);
-      return;
+    if (this.manifest.player.fallbackPath) {
+      this.staticActor = await createCharacterActor({
+        manifest: {
+          ...this.manifest.player,
+          title: `${this.manifest.player.title}·静态`,
+          path: this.manifest.player.fallbackPath,
+          fallbackPath: ''
+        },
+        engine: this.engine,
+        fallbackColor: '#d8ab63'
+      });
     }
 
-    this.showNotice("当前使用临时角色占位，等待导入带动作的苏秦数字人模型。", 3200);
+    this.placeholder.visible = false;
+
+    if (this.visualActor?.root) {
+      this.visualActor.root.rotation.y = this.manifest.player.modelForwardOffsetY ?? 0;
+      this.visualActor.baseScale = this.visualActor.root.scale.clone();
+      this.playerRoot.add(this.visualActor.root);
+    }
+
+    if (this.staticActor?.root) {
+      this.staticActor.root.rotation.y = this.manifest.player.modelForwardOffsetY ?? 0;
+      this.staticActor.baseScale = this.staticActor.root.scale.clone();
+      this.staticActor.root.visible = false;
+      this.playerRoot.add(this.staticActor.root);
+    }
+
+    this._applySceneVisualScale();
+    this._playActorAction('idle', true);
+    this._updateVisibleBody(false);
   }
 
-  _setupInput() {
+  _bindInput() {
     this.onKeyDown = (event) => {
+      if (event.code === 'Space' && !event.repeat) {
+        this._handleJumpPress();
+      }
       this.keys.add(event.code);
     };
+
     this.onKeyUp = (event) => {
       this.keys.delete(event.code);
     };
-    this.onMouseDown = (event) => {
-      if (event.button !== 0) return;
-      this.mouseDragActive = true;
-      if (document.pointerLockElement !== this.engine.canvas && !this.engine.renderer.xr.isPresenting) {
+
+    this.onMouseMove = (event) => {
+      if (this.engine.renderer.xr.isPresenting || this.movementLocked) return;
+      if (document.pointerLockElement !== this.engine.canvas) return;
+
+      if (this.viewMode === 'firstPerson') {
+        this.yaw -= event.movementX * 0.0026;
+        this.pitch = THREE.MathUtils.clamp(this.pitch - event.movementY * 0.0021, -0.68, 0.42);
+        this.cameraYaw = this.yaw;
+        this.cameraPitch = this.pitch;
+        return;
+      }
+
+      this.cameraYaw -= event.movementX * 0.0024;
+      this.cameraPitch = THREE.MathUtils.clamp(this.cameraPitch - event.movementY * 0.0018, -0.48, 0.34);
+    };
+
+    this.onCanvasClick = () => {
+      if (this.engine.renderer.xr.isPresenting) return;
+      if (this.canCapturePointer && !this.canCapturePointer()) return;
+      if (document.pointerLockElement !== this.engine.canvas) {
         this.engine.canvas.requestPointerLock?.();
       }
     };
-    this.onMouseUp = () => {
-      this.mouseDragActive = false;
-    };
-    this.onMouseMove = (event) => {
-      const pointerLocked = document.pointerLockElement === this.engine.canvas;
-      if ((!pointerLocked && !this.mouseDragActive) || this.engine.renderer.xr.isPresenting) return;
-      if (this.movementLocked) return;
-      this.yaw -= event.movementX * 0.0028;
-      this.pitch = THREE.MathUtils.clamp(this.pitch - event.movementY * 0.0022, -0.64, 0.42);
-    };
 
-    window.addEventListener("keydown", this.onKeyDown);
-    window.addEventListener("keyup", this.onKeyUp);
-    this.engine.canvas.addEventListener("mousedown", this.onMouseDown);
-    this.engine.canvas.addEventListener("click", this.onMouseDown);
-    window.addEventListener("mouseup", this.onMouseUp);
-    window.addEventListener("mousemove", this.onMouseMove);
+    window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
+    window.addEventListener('mousemove', this.onMouseMove);
+    this.engine.canvas.addEventListener('click', this.onCanvasClick);
 
-    this.engine.addCleanupTask(() => window.removeEventListener("keydown", this.onKeyDown));
-    this.engine.addCleanupTask(() => window.removeEventListener("keyup", this.onKeyUp));
-    this.engine.addCleanupTask(() => this.engine.canvas.removeEventListener("mousedown", this.onMouseDown));
-    this.engine.addCleanupTask(() => this.engine.canvas.removeEventListener("click", this.onMouseDown));
-    this.engine.addCleanupTask(() => window.removeEventListener("mouseup", this.onMouseUp));
-    this.engine.addCleanupTask(() => window.removeEventListener("mousemove", this.onMouseMove));
+    this.engine.addCleanupTask(() => window.removeEventListener('keydown', this.onKeyDown));
+    this.engine.addCleanupTask(() => window.removeEventListener('keyup', this.onKeyUp));
+    this.engine.addCleanupTask(() => window.removeEventListener('mousemove', this.onMouseMove));
+    this.engine.addCleanupTask(() => this.engine.canvas.removeEventListener('click', this.onCanvasClick));
   }
 
   setScene(sceneConfig) {
     this.sceneConfig = sceneConfig;
-    this.eyeHeight = sceneConfig?.cameraHeight ?? 1.67;
+    this.sceneId = sceneConfig?.id ?? '';
+    this.eyeHeight = sceneConfig?.cameraHeight ?? 1.68;
+    this._applySceneVisualScale();
     this.resetToSpawn();
   }
 
@@ -117,93 +158,178 @@ export class PlayerController {
     this.movementLocked = locked;
   }
 
+  requestPointerLock() {
+    if (this.engine.renderer.xr.isPresenting) return;
+    if (this.canCapturePointer && !this.canCapturePointer()) return;
+    if (document.pointerLockElement !== this.engine.canvas) this.engine.canvas.requestPointerLock?.();
+  }
+
+  releasePointerLock() {
+    if (document.pointerLockElement === this.engine.canvas) document.exitPointerLock?.();
+  }
+
   resetToSpawn() {
-    const start = this.sceneConfig?.playerStart ?? [0, 0, 3];
+    const start = this.sceneConfig?.playerStart ?? [0, 0, 4];
+    const facing = this.sceneConfig?.playerRotationY ?? Math.PI;
     this.playerRoot.position.set(start[0], start[1], start[2]);
-    this.yaw = this.sceneConfig?.playerRotationY ?? Math.PI;
+    this.yaw = facing;
     this.pitch = -0.06;
-    this.applyGrounding();
-    this.lastValidPosition.copy(this.playerRoot.position);
+    this.cameraYaw = facing;
+    this.cameraPitch = this.viewMode === 'thirdPerson' ? -0.22 : -0.06;
+    this.verticalVelocity = 0;
+    this.isGrounded = true;
+    this.jumpUpgraded = false;
+    this.lastMovementDirection.set(0, 0, 0);
+    this._snapToGround(true);
+    this._updateCamera(true);
   }
 
   toggleViewMode() {
-    this.viewMode = this.viewMode === "thirdPerson" ? "firstPerson" : "thirdPerson";
-    this.showNotice(this.viewMode === "thirdPerson" ? "已切换为第三人称跟随视角。" : "已切换为第一人称调查视角。");
+    if (this.engine.renderer.xr.isPresenting) return;
+    this.viewMode = this.viewMode === 'firstPerson' ? 'thirdPerson' : 'firstPerson';
+    if (this.viewMode === 'thirdPerson') {
+      this.cameraYaw = this.yaw;
+      this.cameraPitch = -0.22;
+      this.showNotice('已切换为自由第三人称视角。');
+    } else {
+      this.yaw = this.cameraYaw;
+      this.pitch = THREE.MathUtils.clamp(this.cameraPitch, -0.68, 0.42);
+      this.showNotice('已切换为第一人称调查视角。');
+    }
+    this._updateVisibleBody(false);
+    this._updateCamera(true);
   }
 
   setXRMode(active) {
-    this.placeholder.visible = !active && this.isUsingPlaceholder;
-    if (this.visualActor?.root) this.visualActor.root.visible = !active && !this.isUsingPlaceholder && this.viewMode === "thirdPerson";
-    if (active) this.viewMode = "firstPerson";
+    if (active) this.viewMode = 'firstPerson';
+    this._updateVisibleBody(false);
+    this._updateCamera(true);
   }
 
   moveByWorldVector(vector) {
-    this.playerRoot.position.add(vector);
+    if (!vector?.lengthSq?.()) return;
+    const previous = this.playerRoot.position.clone();
+    this.playerRoot.position.add(new THREE.Vector3(vector.x, 0, vector.z));
     this._clampToWalkArea();
-    this.applyGrounding();
+    this._snapToGround(true);
+    if (!this.floorPoint) this.playerRoot.position.copy(previous);
   }
 
   update(delta) {
     if (this.engine.renderer.xr.isPresenting) return;
 
-    const pointerLocked = document.pointerLockElement === this.engine.canvas;
-    const allowMovement = !this.movementLocked;
-    const wantsToRun = this.keys.has("ShiftLeft") || this.keys.has("ShiftRight");
-    const moveSpeed = this.speed * (wantsToRun ? this.runMultiplier : 1);
-    const moveDirection = new THREE.Vector3();
-    const previousPosition = this.playerRoot.position.clone();
+    const movementDirection = this._getCameraRelativeMoveDirection();
+    const hasMovement = movementDirection.lengthSq() > 0;
+    const isRunning = (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight')) && hasMovement;
+    const speed = this.settings.speed * (isRunning ? this.settings.runMultiplier : 1);
 
-    if (allowMovement) {
-      if (this.keys.has("KeyW")) moveDirection.z -= 1;
-      if (this.keys.has("KeyS")) moveDirection.z += 1;
-      if (this.keys.has("KeyA")) moveDirection.x -= 1;
-      if (this.keys.has("KeyD")) moveDirection.x += 1;
-    }
-
-    const hasMovementInput = moveDirection.lengthSq() > 0;
-
-    if (hasMovementInput) {
-      moveDirection.normalize();
-      const forward = new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw));
-      const right = new THREE.Vector3(forward.z, 0, -forward.x);
-      const movement = new THREE.Vector3()
-        .addScaledVector(forward, -moveDirection.z)
-        .addScaledVector(right, moveDirection.x)
-        .normalize()
-        .multiplyScalar(moveSpeed * delta);
-      this.playerRoot.position.add(movement);
+    if (!this.movementLocked && hasMovement) {
+      const desiredYaw = Math.atan2(movementDirection.x, movementDirection.z);
+      this.yaw = rotateTowardsAngle(this.yaw, desiredYaw, this.settings.turnSpeed * delta);
+      this.playerRoot.position.addScaledVector(movementDirection, speed * delta);
       this._clampToWalkArea();
-      const snapped = this.applyGrounding();
-      if (!snapped) {
-        this.playerRoot.position.copy(previousPosition);
-        this.applyGrounding();
-      } else {
-        this.lastValidPosition.copy(this.playerRoot.position);
-      }
+      this.lastMovementDirection.copy(movementDirection);
     } else {
-      this.applyGrounding();
+      this.lastMovementDirection.set(0, 0, 0);
     }
 
-    const isMoving = hasMovementInput && this.playerRoot.position.distanceToSquared(previousPosition) > 1e-6;
-    this._syncVisualActor(delta, { isMoving, isRunning: wantsToRun && isMoving });
-    this._updateBodyVisibility(pointerLocked);
+    this._updateVerticalMotion(delta);
+    this._updateActorState({ moving: this.lastMovementDirection.lengthSq() > 0.0001, running: isRunning });
+    this._updateVisibleBody(hasMovement);
     this._updateCamera();
   }
 
-  applyGrounding() {
-    const point = sampleFloorPoint(this.playerRoot.position.x, this.playerRoot.position.z, {
+  _getCameraRelativeMoveDirection() {
+    if (this.movementLocked) return new THREE.Vector3();
+
+    const forwardInput = (this.keys.has('KeyW') ? 1 : 0) - (this.keys.has('KeyS') ? 1 : 0);
+    const rightInput = (this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('KeyA') ? 1 : 0);
+    if (!forwardInput && !rightInput) return new THREE.Vector3();
+
+    const referenceYaw = this.viewMode === 'thirdPerson' ? this.cameraYaw : this.yaw;
+    const forward = new THREE.Vector3(Math.sin(referenceYaw), 0, Math.cos(referenceYaw)).normalize();
+    const right = new THREE.Vector3(forward.z, 0, -forward.x).normalize();
+    const direction = new THREE.Vector3()
+      .addScaledVector(forward, forwardInput)
+      .addScaledVector(right, rightInput);
+
+    return direction.lengthSq() > 0 ? direction.normalize() : direction;
+  }
+
+  _handleJumpPress() {
+    if (this.movementLocked || this.engine.renderer.xr.isPresenting) return;
+    const now = performance.now();
+
+    if (this.isGrounded) {
+      this.verticalVelocity = this.settings.jumpVelocity;
+      this.isGrounded = false;
+      this.jumpUpgraded = false;
+      this.lastSpacePressTime = now;
+      this.currentAnimationName = '跳跃';
+      return;
+    }
+
+    if (!this.jumpUpgraded && now - this.lastSpacePressTime <= this.settings.doubleTapWindow) {
+      this.verticalVelocity = Math.max(this.verticalVelocity, this.settings.highJumpVelocity);
+      this.jumpUpgraded = true;
+      this.currentAnimationName = '高跳';
+    }
+    this.lastSpacePressTime = now;
+  }
+
+  _updateVerticalMotion(delta) {
+    const previousY = this.playerRoot.position.y;
+    const floor = sampleFloorPoint(this.playerRoot.position.x, this.playerRoot.position.z, {
       sceneColliders: this.engine.sceneColliders,
-      rayStartHeight: 6,
-      maxDistance: 24,
-      prefer: "highest",
+      rayStartHeight: 20,
+      maxDistance: 40,
+      prefer: 'highest',
       referenceY: this.playerRoot.position.y,
-      maxRise: 1.4,
-      maxDrop: 7,
+      maxRise: 2.4,
+      maxDrop: 18,
       target: this.floorPoint
     });
-    if (!point) return null;
-    this.playerRoot.position.y = point.y;
-    return point;
+
+    if (this.isGrounded) {
+      if (floor) this.playerRoot.position.y = floor.y;
+      return;
+    }
+
+    this.verticalVelocity -= this.settings.gravity * delta;
+    this.playerRoot.position.y += this.verticalVelocity * delta;
+
+    if (floor && this.playerRoot.position.y <= floor.y) {
+      this.playerRoot.position.y = floor.y;
+      this.verticalVelocity = 0;
+      this.isGrounded = true;
+      this.jumpUpgraded = false;
+      return;
+    }
+
+    if (Math.abs(this.playerRoot.position.y - previousY) < 0.0001 && floor) {
+      this.playerRoot.position.y = floor.y;
+      this.verticalVelocity = 0;
+      this.isGrounded = true;
+      this.jumpUpgraded = false;
+    }
+  }
+
+  _snapToGround(force = false) {
+    const floor = sampleFloorPoint(this.playerRoot.position.x, this.playerRoot.position.z, {
+      sceneColliders: this.engine.sceneColliders,
+      rayStartHeight: 20,
+      maxDistance: 40,
+      prefer: 'highest',
+      referenceY: this.playerRoot.position.y,
+      maxRise: force ? 4 : 2.4,
+      maxDrop: 18,
+      target: this.floorPoint
+    });
+    if (!floor) return null;
+    this.playerRoot.position.y = floor.y;
+    this.verticalVelocity = 0;
+    this.isGrounded = true;
+    return floor;
   }
 
   _clampToWalkArea() {
@@ -213,69 +339,137 @@ export class PlayerController {
     this.playerRoot.position.z = THREE.MathUtils.clamp(this.playerRoot.position.z, area.minZ, area.maxZ);
   }
 
+  _applySceneVisualScale() {
+    const multiplier = this.sceneConfig?.playerVisualScale ?? 1;
+    if (this.visualActor?.baseScale) copyScale(this.visualActor.root.scale, this.visualActor.baseScale, multiplier);
+    if (this.staticActor?.baseScale) copyScale(this.staticActor.root.scale, this.staticActor.baseScale, multiplier);
+  }
 
-  _syncVisualActor(delta, { isMoving, isRunning }) {
-    const actorRoot = this.visualActor?.root;
-    if (!actorRoot) return;
+  _updateActorState({ moving, running }) {
+    this.playerRoot.rotation.y = this.yaw;
 
-    actorRoot.rotation.y = THREE.MathUtils.lerp(
-      actorRoot.rotation.y,
-      Math.PI - this.yaw,
-      Math.min(delta * 7.5, 0.24)
-    );
+    if (this.visualActor?.root) {
+      this.visualActor.root.rotation.y = this.manifest.player.modelForwardOffsetY ?? 0;
+    }
+    if (this.staticActor?.root) {
+      this.staticActor.root.rotation.y = this.manifest.player.modelForwardOffsetY ?? 0;
+    }
 
-    const nextAction = isMoving ? (isRunning ? "run" : "walk") : "idle";
-    this._playActorAction(nextAction);
+    if (!this.isGrounded) {
+      this._playActorAction('jump');
+      return;
+    }
+
+    if (moving) {
+      this._playActorAction(running ? 'run' : 'walk');
+    } else {
+      this._playActorAction('idle');
+    }
   }
 
   _playActorAction(actionKey, immediate = false) {
     const actions = this.visualActor?.actions;
     if (!actions) return;
+
+    const hasIdle = Boolean(actions.idle);
     const nextAction = actions[actionKey] ?? actions.walk ?? actions.idle ?? null;
-    if (!nextAction) return;
-    if (this.currentActorAction === nextAction) return;
+
+    if (actionKey === 'idle' && !hasIdle) {
+      if (actions.walk) {
+        actions.walk.stop();
+        actions.walk.reset();
+      }
+      this.currentAnimationName = '静止';
+      this.visualActor.currentAction = null;
+      return;
+    }
+
+    if (!nextAction) {
+      this.currentAnimationName = '静止';
+      return;
+    }
+
+    if (this.visualActor.currentAction === nextAction && actionKey !== 'jump') {
+      this.currentAnimationName = actionKey === 'run' ? '奔跑' : actionKey === 'walk' ? '行走' : actionKey === 'idle' ? '静止' : '跳跃';
+      return;
+    }
 
     Object.values(actions).forEach((action) => {
       if (!action || action === nextAction) return;
-      action.fadeOut(immediate ? 0.01 : 0.18);
+      action.fadeOut(immediate ? 0.01 : 0.16);
     });
 
     nextAction.reset();
     nextAction.enabled = true;
-    nextAction.fadeIn(immediate ? 0.01 : 0.18).play();
-    this.currentActorAction = nextAction;
+    nextAction.timeScale = actionKey === 'run' && !actions.run ? 1.45 : 1;
+    nextAction.fadeIn(immediate ? 0.01 : 0.16).play();
+    this.visualActor.currentAction = nextAction;
+    this.currentAnimationName = actionKey === 'run' ? '奔跑' : actionKey === 'walk' ? '行走' : actionKey === 'idle' ? '静止' : '跳跃';
   }
 
-  _updateBodyVisibility(pointerLocked) {
-    if (!this.visualActor?.root) return;
-    const shouldShowBody = this.viewMode === "thirdPerson" && !this.engine.renderer.xr.isPresenting;
-    this.visualActor.root.visible = shouldShowBody;
-    this.placeholder.visible = shouldShowBody && this.isUsingPlaceholder;
-  }
-
-  _updateCamera() {
-    const target = this.playerRoot.position.clone().add(new THREE.Vector3(0, this.eyeHeight, 0));
-    const forward = new THREE.Vector3(
-      Math.sin(this.yaw) * Math.cos(this.pitch),
-      Math.sin(this.pitch),
-      Math.cos(this.yaw) * Math.cos(this.pitch)
-    );
-
-    if (this.viewMode === "firstPerson" || this.engine.renderer.xr.isPresenting) {
-      this.engine.camera.position.copy(target);
-      this.engine.camera.lookAt(target.clone().add(forward));
+  _updateVisibleBody(isMoving) {
+    const showBody = this.viewMode === 'thirdPerson' && !this.engine.renderer.xr.isPresenting;
+    if (!showBody) {
+      if (this.visualActor?.root) this.visualActor.root.visible = false;
+      if (this.staticActor?.root) this.staticActor.root.visible = false;
+      this.placeholder.visible = false;
+      this.currentBodyMode = 'hidden';
       return;
     }
 
-    const radius = 4.3;
-    const cameraOffset = new THREE.Vector3(
-      -Math.sin(this.yaw) * radius,
-      2.15 + Math.max(this.pitch, -0.1) * 1.2,
-      -Math.cos(this.yaw) * radius
+    const shouldUseStatic = !isMoving && this.isGrounded && this.staticActor?.root;
+    if (shouldUseStatic) {
+      if (this.visualActor?.root) this.visualActor.root.visible = false;
+      if (this.staticActor?.root) this.staticActor.root.visible = true;
+      this.placeholder.visible = false;
+      this.currentBodyMode = 'static';
+      return;
+    }
+
+    if (this.visualActor?.root) {
+      this.visualActor.root.visible = true;
+      if (this.staticActor?.root) this.staticActor.root.visible = false;
+      this.placeholder.visible = false;
+      this.currentBodyMode = 'animated';
+      return;
+    }
+
+    this.placeholder.visible = true;
+    this.currentBodyMode = 'placeholder';
+  }
+
+  _updateCamera(forceSnap = false) {
+    const eye = this.playerRoot.position.clone().add(new THREE.Vector3(0, this.eyeHeight, 0));
+
+    if (this.viewMode === 'firstPerson' || this.engine.renderer.xr.isPresenting) {
+      const forward = new THREE.Vector3(
+        Math.sin(this.yaw) * Math.cos(this.pitch),
+        Math.sin(this.pitch),
+        Math.cos(this.yaw) * Math.cos(this.pitch)
+      ).normalize();
+      this.engine.camera.position.copy(eye);
+      this.cameraLookTarget.copy(eye).add(forward);
+      this.engine.camera.lookAt(this.cameraLookTarget);
+      return;
+    }
+
+    const distance = this.settings.thirdPersonDistance;
+    const orbitPitch = this.cameraPitch;
+    const horizontalDistance = distance * Math.cos(orbitPitch);
+    const offset = new THREE.Vector3(
+      -Math.sin(this.cameraYaw) * horizontalDistance,
+      this.settings.thirdPersonHeight + distance * Math.sin(orbitPitch),
+      -Math.cos(this.cameraYaw) * horizontalDistance
     );
-    const cameraTarget = target.clone().add(cameraOffset);
-    this.engine.camera.position.lerp(cameraTarget, 0.16);
-    this.engine.camera.lookAt(target.clone().add(new THREE.Vector3(0, 0.2, 0)));
+    const desiredPosition = this.playerRoot.position.clone().add(offset);
+    const desiredLookAt = this.playerRoot.position.clone().add(new THREE.Vector3(0, this.settings.thirdPersonLookHeight, 0));
+
+    if (forceSnap) {
+      this.engine.camera.position.copy(desiredPosition);
+    } else {
+      this.engine.camera.position.lerp(desiredPosition, 0.18);
+    }
+    this.engine.camera.lookAt(desiredLookAt);
   }
 
   getPosition() {
@@ -287,11 +481,8 @@ export class PlayerController {
   }
 
   getForwardVector() {
-    return new THREE.Vector3(
-      Math.sin(this.yaw) * Math.cos(this.pitch),
-      Math.sin(this.pitch),
-      Math.cos(this.yaw) * Math.cos(this.pitch)
-    ).normalize();
+    const referenceYaw = this.viewMode === 'thirdPerson' ? this.cameraYaw : this.yaw;
+    return new THREE.Vector3(Math.sin(referenceYaw), 0, Math.cos(referenceYaw)).normalize();
   }
 
   getDebugState() {
@@ -300,19 +491,27 @@ export class PlayerController {
       camera: this.engine.camera.position.clone(),
       yaw: this.yaw,
       pitch: this.pitch,
+      cameraYaw: this.cameraYaw,
+      cameraPitch: this.cameraPitch,
       floor: this.floorPoint.clone(),
+      grounded: this.isGrounded,
+      verticalVelocity: this.verticalVelocity,
+      movement: this.lastMovementDirection.clone(),
       viewMode: this.viewMode,
-      eyeHeight: this.eyeHeight
+      bodyMode: this.currentBodyMode,
+      eyeHeight: this.eyeHeight,
+      currentAnimationName: this.currentAnimationName,
+      animationNames: this.visualActor?.animationNames ?? []
     };
   }
 
   showNotice(message, duration = 2600) {
     if (!this.hudNotice) return;
     this.hudNotice.textContent = message;
-    this.hudNotice.classList.add("is-visible");
+    this.hudNotice.classList.add('is-visible');
     window.clearTimeout(this.noticeTimer);
     this.noticeTimer = window.setTimeout(() => {
-      this.hudNotice.classList.remove("is-visible");
+      this.hudNotice.classList.remove('is-visible');
     }, duration);
   }
 }
