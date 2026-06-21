@@ -1,85 +1,38 @@
-# 粤剧《六国大封相》数字仓库
+﻿# 《六国大封相》数字资料馆
 
-这是一个纯前端的静态展陈页面，用于展示粤剧《六国大封相》的人物、物件与场景，并进入对应的三维展示台。
+本仓库目前分为两个彼此独立的前端模块：
 
-## 当前结构
+- `main-site/`：现有资料馆主站，包含人物馆、物件馆、场景馆。
+- `mystery-vr/`：新增的 WebGL / WebXR 沉浸式原型《六国大封相：声境谜局》。
 
-```text
-.
-├─ index.html
-├─ styles/
-│  └─ main.css
-├─ scripts/
-│  ├─ app.js
-│  ├─ catalog.js
-│  ├─ previewStage.js
-│  └─ viewer.js
-└─ assets/
-   ├─ character/
-   ├─ object/
-   └─ scene/
-```
+## 根目录行为
 
-## 功能说明
-
-- 人物馆：人物档案 / 行当名册
-- 物件馆：物件档案 / 道具线索库
-- 场景馆：场景档案 / 三维空间库
-- 使用 `Three.js`、`GLTFLoader`、`OrbitControls`
-- 支持本地 `.glb`、`.png`，凤冠额外支持 `.mp4` 预览
-- 纯静态前端，无后端、无 VR
-- 使用相对路径，兼容本地运行与 GitHub Pages 部署
+- 根目录 `index.html` 会自动跳转到 `main-site/index.html`。
+- 主站首页额外提供一个入口按钮，可进入 `mystery-vr/index.html`。
 
 ## 本地运行
 
-由于浏览器通常会限制直接通过 `file://` 读取模块与 GLB，建议使用一个本地静态服务器。
+请不要直接用 `file://` 打开页面。Three.js 资源加载与 WebXR 检测都需要通过本地 HTTP 服务访问。
 
-### 方式一：Python
+示例：
 
 ```bash
 python -m http.server 4173
 ```
 
-打开：
+然后访问：
 
 ```text
 http://localhost:4173
 ```
 
-### 方式二：VS Code Live Server
+## GitHub Pages
 
-直接在项目根目录启动 Live Server 即可。
+本仓库中的两套前端都使用相对路径，可直接部署到 GitHub Pages：
 
-## 资源接入规则
+- 主站入口：`/main-site/index.html`
+- WebXR 原型：`/mystery-vr/index.html`
 
-### 人物资源
+## 说明
 
-- `assets/character/<名称>.png`
-- `assets/character/<名称>.glb`
-
-### 物件资源
-
-- `assets/object/<名称>.png`
-- `assets/object/<名称>.glb`
-- `assets/object/<名称>.mp4`（可选，例如 `凤冠.mp4`）
-
-### 场景资源
-
-- `assets/scene/<名称>.png`
-- `assets/scene/<名称>.glb`
-
-## 当前已接入场景
-
-- `序章粤剧剧场`
-- `封相朝堂`
-- `院子`
-
-## 部署到 GitHub Pages
-
-本项目使用相对路径，例如：
-
-- `./assets/character/NPC.glb`
-- `./assets/object/凤冠.mp4`
-- `./assets/scene/封相朝堂.glb`
-
-因此可以直接作为静态站点部署到 GitHub Pages，无需改写资源前缀。
+- `mystery-vr/README.md` 中包含 WebXR 原型的完整实现说明、资源清单、已知限制与后续补充建议。
