@@ -1,0 +1,191 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>《六国大封相：声境谜局》</title>
+    <meta
+      name="description"
+      content="基于 Three.js 与 WebXR 的前端沉浸式粤剧剧本杀原型，围绕《六国大封相》的封相朝堂、戏棚与线索搜证展开。"
+    />
+    <link rel="stylesheet" href="./styles/game.css" />
+    <link rel="icon" href="data:," />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="gameApp" class="game-app">
+      <canvas id="gameCanvas" aria-label="《六国大封相：声境谜局》实时场景"></canvas>
+      <div id="reticle" class="reticle" aria-hidden="true"></div>
+      <div id="worldHint" class="world-hint hidden"></div>
+
+      <section id="launchScreen" class="launch-screen">
+        <div class="launch-card">
+          <p class="launch-eyebrow">粤剧沉浸式剧本杀 · WebXR 原型</p>
+          <h1>《六国大封相：声境谜局》</h1>
+          <p class="launch-copy">
+            你将以苏秦视角踏入封相朝堂，在礼乐、印信、密函与声景碎片之间调查一场被盛典掩住的权谋异动。
+            <br />
+            桌面模式可直接探索；兼容设备可继续进入 WebXR VR 模式。
+          </p>
+          <div class="launch-actions">
+            <button id="startButton" class="launch-button" type="button">开始探索</button>
+            <div id="xrButtonHost" class="xr-button-host"></div>
+            <button id="helpButton" class="launch-button secondary" type="button">操作说明</button>
+            <a class="launch-button secondary" href="../main-site/index.html">返回资料馆</a>
+          </div>
+          <p id="xrSupportLabel" class="support-copy">
+            桌面模式可直接开始。若设备与浏览器支持 WebXR，将显示“进入 VR 模式”按钮。
+          </p>
+        </div>
+      </section>
+
+      <section id="storyPrompt" class="story-prompt hidden">
+        <div class="opening-card story-card">
+          <p class="panel-eyebrow">入殿提示</p>
+          <h2>封相朝堂</h2>
+          <div id="storyPromptBody" class="opening-lines"></div>
+          <button id="storyPromptButton" class="launch-button secondary" type="button">继续入殿</button>
+        </div>
+      </section>
+
+      <div id="loadingOverlay" class="game-overlay hidden">
+        <div class="overlay-card loading-card">
+          <div class="loader-ring"></div>
+          <h3>正在重构封相大典的声境记忆……</h3>
+          <p id="loadingText">正在重构封相大典的声境记忆……</p>
+        </div>
+      </div>
+
+      <div id="errorOverlay" class="game-overlay hidden">
+        <div class="overlay-card">
+          <h3 id="errorTitle">资源加载失败</h3>
+          <p id="errorText">当前场景资源未能成功载入，请返回起始页后重试。</p>
+          <button id="errorBackButton" class="launch-button secondary" type="button">返回起始页</button>
+        </div>
+      </div>
+
+      <header id="gameHud" class="game-hud hidden">
+        <div class="hud-panel hud-left">
+          <p>当前场景：<strong id="hudScene">封相朝堂</strong></p>
+          <p>当前目标：<strong id="hudObjective">先靠近公孙衍，确认朝堂中的第一处异常。</strong></p>
+        </div>
+        <div class="hud-panel hud-right">
+          <p>已收集线索：<strong id="hudClueCount">0 / 12</strong></p>
+          <p>关键线索：<strong id="hudKeyCount">0 / 4</strong></p>
+        </div>
+      </header>
+
+      <div id="interactionPrompt" class="interaction-prompt hidden">[E] 调查</div>
+
+      <footer id="controlHint" class="control-hint hidden">
+        WASD 移动 · 鼠标转动视角 · E 调查 · I 线索档案 · M 场景地图 · Esc 暂停
+      </footer>
+
+      <aside id="statusToast" class="status-toast"></aside>
+      <aside id="audioToast" class="status-toast alt"></aside>
+      <aside id="debugPanel" class="debug-panel hidden"></aside>
+
+      <section id="archivePanel" class="floating-panel archive-panel hidden">
+        <div class="panel-header">
+          <div>
+            <p class="panel-eyebrow">线索档案</p>
+            <h3>搜证记录</h3>
+          </div>
+          <button id="archiveCloseButton" class="mini-button" type="button">关闭</button>
+        </div>
+        <p id="archiveObjective" class="panel-objective"></p>
+        <p id="archiveStats" class="panel-stats"></p>
+        <div id="archiveList" class="archive-list"></div>
+      </section>
+
+      <section id="mapPanel" class="floating-panel map-panel hidden">
+        <div class="panel-header">
+          <div>
+            <p class="panel-eyebrow">场景图</p>
+            <h3>已解锁区域</h3>
+          </div>
+          <button id="mapCloseButton" class="mini-button" type="button">关闭</button>
+        </div>
+        <p class="panel-stats">可在这里快速切换已开放的七个场景。</p>
+        <div id="sceneMapList" class="scene-map-list"></div>
+      </section>
+
+      <section id="pausePanel" class="floating-panel pause-panel hidden">
+        <div class="panel-header">
+          <div>
+            <p class="panel-eyebrow">暂停菜单</p>
+            <h3>当前探索已暂停</h3>
+          </div>
+        </div>
+        <div class="pause-actions">
+          <button id="resumeButton" class="launch-button" type="button">继续探索</button>
+          <button id="pauseHelpButton" class="launch-button secondary" type="button">操作说明</button>
+          <button id="resetPositionButton" class="launch-button secondary" type="button">重置站位</button>
+          <label class="volume-row">
+            提示音量
+            <input id="volumeRange" type="range" min="0" max="1" step="0.05" value="0.8" />
+          </label>
+          <a class="launch-button secondary" href="../main-site/index.html">返回资料馆</a>
+        </div>
+      </section>
+
+      <section id="dialoguePanel" class="floating-panel dialogue-panel hidden">
+        <div class="panel-header">
+          <div>
+            <p id="dialogueRole" class="panel-eyebrow">人物对话</p>
+            <h3 id="dialogueSpeaker">角色名</h3>
+          </div>
+          <button id="dialogueCloseButton" class="mini-button" type="button">关闭</button>
+        </div>
+        <p id="dialogueText" class="dialogue-text"></p>
+        <div id="dialogueResponses" class="dialogue-responses"></div>
+      </section>
+
+      <section id="inspectPanel" class="floating-panel inspect-panel hidden">
+        <div class="panel-header">
+          <div>
+            <p class="panel-eyebrow">线索观察</p>
+            <h3 id="inspectTitle">线索标题</h3>
+          </div>
+          <button id="inspectCloseButton" class="mini-button" type="button">关闭</button>
+        </div>
+        <img id="inspectImage" class="inspect-image hidden" alt="线索预览图" />
+        <p id="inspectMeta" class="panel-stats"></p>
+        <div id="inspectBody" class="inspect-body"></div>
+      </section>
+
+      <section id="helpPanel" class="floating-panel help-panel hidden">
+        <div class="panel-header">
+          <div>
+            <p class="panel-eyebrow">操作说明</p>
+            <h3>桌面 / VR 控制</h3>
+          </div>
+          <button id="helpCloseButton" class="mini-button" type="button">关闭</button>
+        </div>
+        <div class="help-grid">
+          <p>W / A / S / D：地面移动</p>
+          <p>Shift：短时加速</p>
+          <p>鼠标转动：切换视角</p>
+          <p>E：调查 / 对话</p>
+          <p>F：切换第一 / 第三人称</p>
+          <p>I：打开线索档案</p>
+          <p>M：打开场景图</p>
+          <p>Esc：暂停或关闭面板</p>
+          <p>R：重置站位</p>
+          <p>~：开发调试模式</p>
+          <p>VR 右手扳机：交互</p>
+          <p>左摇杆：移动 · 右摇杆：转向</p>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="./scripts/main.js?v=20260621-06"></script>
+  </body>
+</html>
