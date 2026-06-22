@@ -1,6 +1,6 @@
 ﻿import * as THREE from 'three';
-import { scaleVisualRootWithLift } from './game-engine.js?v=20260622a';
-import { createCharacterActor } from './npc-system.js?v=20260622a';
+import { scaleVisualRootWithLift } from './game-engine.js';
+import { createCharacterActor } from './npc-system.js';
 import { MODEL_CALIBRATION } from './data/model-calibration.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -132,7 +132,7 @@ export class PlayerController {
       if (this.engine.renderer.xr.isPresenting) return;
       if (this.canCapturePointer && !this.canCapturePointer()) return;
       if (document.pointerLockElement !== this.engine.canvas) {
-        if (this.engine.canvas.requestPointerLock) this.engine.canvas.requestPointerLock();
+        void this.requestPointerLock();
       }
     };
 
@@ -189,9 +189,28 @@ export class PlayerController {
   }
 
   requestPointerLock() {
-    if (this.engine.renderer.xr.isPresenting) return;
-    if (this.canCapturePointer && !this.canCapturePointer()) return;
-    if (document.pointerLockElement !== this.engine.canvas && this.engine.canvas.requestPointerLock) this.engine.canvas.requestPointerLock();
+    if (this.engine.renderer.xr.isPresenting) return Promise.resolve(false);
+    if (this.canCapturePointer && !this.canCapturePointer()) return Promise.resolve(false);
+    if (document.pointerLockElement === this.engine.canvas) return Promise.resolve(true);
+    if (!this.engine.canvas.requestPointerLock) return Promise.resolve(false);
+
+    try {
+      const result = this.engine.canvas.requestPointerLock();
+      if (result && typeof result.then === 'function') {
+        return result.then(() => true).catch((error) => {
+          if (!/WrongDocumentError|NotAllowedError/i.test(String(error?.name || error?.message || error))) {
+            console.warn('[PointerLock] 请求失败', error);
+          }
+          return false;
+        });
+      }
+      return Promise.resolve(true);
+    } catch (error) {
+      if (!/WrongDocumentError|NotAllowedError/i.test(String(error?.name || error?.message || error))) {
+        console.warn('[PointerLock] 请求失败', error);
+      }
+      return Promise.resolve(false);
+    }
   }
 
   releasePointerLock() {
@@ -667,6 +686,8 @@ export class PlayerController {
     }, duration);
   }
 }
+
+
 
 
 

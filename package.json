@@ -1,12 +1,18 @@
-﻿{
-  "name": "chinese-drama",
+{
+  "name": "liuguo-dafengxiang-webxr",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node dev-server.cjs",
-    "dev:http": "node dev-server.cjs",
-    "dev:https": "node https-dev-server.cjs",
-    "preview:https": "node https-dev-server.cjs"
+    "dev": "vite --host 0.0.0.0 --port 4173 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",
+    "verify:https": "node scripts/verify-https.mjs"
+  },
+  "dependencies": {
+    "three": "^0.166.1"
+  },
+  "devDependencies": {
+    "vite": "^7.3.5",
+    "vite-plugin-mkcert": "^1.17.8"
   }
 }
-

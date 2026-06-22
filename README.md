@@ -2,59 +2,72 @@
 
 本仓库包含两个前端模块：
 
-- `main-site/`：资料馆主站，包含人物馆、物件馆、场景馆。
-- `mystery-vr/`：WebGL / WebXR 沉浸式剧本杀模块《六国大封相：第七声锣》。
+- `main-site/`：资料馆主站
+- `mystery-vr/`：WebGL / WebXR 剧本杀模块
 
-## 根目录入口
+## 本地 HTTPS 开发
 
-- 根目录 `index.html` 会跳转到 `main-site/index.html`。
-- 主站中的“进入剧本杀世界”按钮会进入 `mystery-vr/index.html`。
+### 安装依赖
 
-## 本地运行
+```bash
+npm install
+```
 
-### WebXR / HTTPS 调试
+### 准备 HTTPS 证书
+
+请准备以下文件：
+
+- `.certs/dev-cert.pem`
+- `.certs/dev-key.pem`
+
+也可以通过环境变量覆盖：
+
+- `VITE_HTTPS_CERT_PATH`
+- `VITE_HTTPS_KEY_PATH`
+
+### 启动开发服务器
 
 ```bash
 npm run dev
 ```
 
-默认地址：
+固定开发地址：
 
 ```text
 https://localhost:4173
 ```
 
-说明：
+注意：
 
-- `npm run dev` 使用本地 HTTPS 服务器；
-- 若缺少 `.certs/dev-key.pem` 与 `.certs/dev-cert.pem`，会直接报错退出；
-- 不会静默退回 HTTP。
+- 不允许使用 `http://localhost:4173`
+- 不允许使用 `python -m http.server`
+- 缺少 HTTPS 证书时，Vite 会直接报错并停止启动
+- WebXR / Meta Quest 3 调试必须基于 HTTPS
 
-### 普通桌面临时查看
+### HTTPS 自检
 
 ```bash
-npm run dev:http
+npm run verify:https
 ```
 
-地址：
+## 构建与部署
 
-```text
-http://localhost:4173
+```bash
+npm run build
+npm run preview
 ```
 
-该模式仅适合普通页面查看，不适合作为 Meta Quest WebXR 验收环境。
+GitHub Pages 工作流位于：
 
-## GitHub Pages
+- `.github/workflows/deploy-pages.yml`
 
-仓库已提供 GitHub Pages 工作流，可直接部署静态站点。
+部署后将使用公开 HTTPS 地址，供 Meta Quest 3 的 Quest Browser 访问。
 
-部署后可访问：
+## Meta Quest 3 验收建议
 
-- 主站：`/main-site/index.html`
-- 剧本杀：`/mystery-vr/index.html`
-
-## 说明
-
-- `main-site/` 与 `mystery-vr/` 相互独立。
-- `mystery-vr/README.md` 记录了 WebXR、HTTPS、场景流程、调试模式与资源说明。
-- 本地 HTTPS 证书目录 `.certs/` 已被 `.gitignore` 忽略，不会提交到仓库。
+1. 将代码推送到 `main` 分支
+2. 等待 GitHub Pages 自动构建完成
+3. 在 Quest Browser 中打开公开 HTTPS 地址
+4. 进入 `mystery-vr/index.html`
+5. 确认页面处于安全上下文，且浏览器支持 `immersive-vr`
+6. 再点击“进入 VR 模式”

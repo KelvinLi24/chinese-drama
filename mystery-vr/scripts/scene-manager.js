@@ -9,7 +9,7 @@ import {
   sharedLoader,
   snapObjectToFloor,
   liftVisualModelToAnchor
-} from './game-engine.js?v=20260622a';
+} from './game-engine.js';
 
 const WOOD = '#432017';
 const RED = '#6a1f1b';
@@ -653,6 +653,7 @@ export class SceneManager {
     });
   }
 }
+
 
 
 

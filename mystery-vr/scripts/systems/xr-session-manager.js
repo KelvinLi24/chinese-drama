@@ -11,11 +11,18 @@ export function getXrSessionState() {
   return { ...XR_SESSION_STATE };
 }
 
-export async function beginImmersiveVRFromUserGesture({ navigatorXR, renderer, sessionOptions = {} }) {
+export async function beginImmersiveVRFromUserGesture({ navigatorXR, renderer, sessionOptions = {}, diagnostics = null }) {
   XR_SESSION_STATE.status = '正在请求';
   XR_SESSION_STATE.lastErrorName = '';
   XR_SESSION_STATE.lastErrorMessage = '';
   XR_SESSION_STATE.requestInUserGestureChain = true;
+
+  if (!window.isSecureContext || window.location.protocol !== 'https:') {
+    XR_SESSION_STATE.status = '失败';
+    XR_SESSION_STATE.lastErrorName = 'InsecureContext';
+    XR_SESSION_STATE.lastErrorMessage = '当前页面不是 HTTPS 安全上下文，WebXR 无法启动。';
+    throw new Error(XR_SESSION_STATE.lastErrorMessage);
+  }
 
   if (!navigatorXR?.requestSession) {
     XR_SESSION_STATE.status = '失败';
@@ -24,13 +31,10 @@ export async function beginImmersiveVRFromUserGesture({ navigatorXR, renderer, s
     throw new Error(XR_SESSION_STATE.lastErrorMessage);
   }
 
-  const supported = navigatorXR.isSessionSupported
-    ? await navigatorXR.isSessionSupported('immersive-vr')
-    : false;
-  if (!supported) {
+  if (diagnostics && diagnostics.immersiveVrSupported === false) {
     XR_SESSION_STATE.status = '失败';
     XR_SESSION_STATE.lastErrorName = 'ImmersiveVrUnsupported';
-    XR_SESSION_STATE.lastErrorMessage = '当前设备或浏览器暂不支持 immersive-vr。';
+    XR_SESSION_STATE.lastErrorMessage = diagnostics.reason || '当前设备或浏览器暂不支持 immersive-vr。';
     throw new Error(XR_SESSION_STATE.lastErrorMessage);
   }
 
@@ -46,7 +50,8 @@ export async function beginImmersiveVRFromUserGesture({ navigatorXR, renderer, s
       ...sessionOptions
     });
 
-    await renderer.xr.setReferenceSpaceType?.('local-floor');
+    renderer.xr.enabled = true;
+    renderer.xr.setReferenceSpaceType?.('local-floor');
     await renderer.xr.setSession(session);
     XR_SESSION_STATE.status = '已进入';
     session.addEventListener('end', () => {

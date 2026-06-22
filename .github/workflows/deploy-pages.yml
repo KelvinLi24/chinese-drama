@@ -2,7 +2,7 @@
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -11,23 +11,45 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: 拉取仓库
         uses: actions/checkout@v4
 
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
       - name: 配置 Pages
         uses: actions/configure-pages@v5
 
-      - name: 上传静态文件
+      - name: 安装依赖
+        run: npm install
+
+      - name: 构建静态站点
+        env:
+          VITE_DEPLOY_TARGET: github-pages
+        run: npm run build
+
+      - name: 上传构建产物
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
-      - name: 发布
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 发布到 GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4

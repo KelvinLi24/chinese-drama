@@ -3,16 +3,16 @@ import { ASSET_MANIFEST } from './asset-manifest.js';
 import { FORMAL_SCENE_IDS, VIDEO_REGISTRY } from './data/scene-registry.js';
 import { GAME_MODES, STORY_TEXT, createInitialProgress, evaluateEnding, getCurrentObjective, getEvidenceChainState, syncSceneUnlocks } from './data/story-state.js';
 import { CLUE_DEFINITIONS, DIALOGUE_DATA, ENDING_DATA } from './story-data.js';
-import { getCollectedClueStats } from './data/clue-registry.js?v=20260621e';
-import { GameEngine, waitForNextFrame } from './game-engine.js?v=20260621e';
+import { getCollectedClueStats } from './data/clue-registry.js';
+import { GameEngine, waitForNextFrame } from './game-engine.js';
 import { InteractionSystem } from './interaction-system.js';
 import { InventorySystem } from './inventory-system.js';
-import { NPCSystem } from './npc-system.js?v=20260622b';
-import { PlayerController } from './player-controller.js?v=20260622b';
-import { SceneManager } from './scene-manager.js?v=20260622b';
-import { SceneLoadCoordinator } from './systems/scene-load-coordinator.js?v=20260622b';
-import { VRControllerSystem } from './vr-controller.js?v=20260622b';
-import { WorldCollisionSystem } from './systems/world-collision-system.js?v=20260622c';
+import { NPCSystem } from './npc-system.js';
+import { PlayerController } from './player-controller.js';
+import { SceneManager } from './scene-manager.js';
+import { SceneLoadCoordinator } from './systems/scene-load-coordinator.js';
+import { VRControllerSystem } from './vr-controller.js';
+import { WorldCollisionSystem } from './systems/world-collision-system.js';
 
 const dom = {
   canvas: document.querySelector('#gameCanvas'),
@@ -503,7 +503,7 @@ function showStoryPrompt(lines, title = '入场提示', afterClose = null) {
   dom.storyPrompt.classList.remove('hidden');
   dom.storyPromptButton.onclick = () => {
     dom.storyPrompt.classList.add('hidden');
-    resumeExploreControl();
+    resumeExploreControl({ recapturePointer: false });
     showControlHintTemporarily(8000);
     afterClose?.();
   };
@@ -1160,6 +1160,8 @@ vrSystem.init().catch((error) => {
   console.warn('[WebXR 初始化失败]', error);
 });
 updateAllUi();
+
+
 
 
 

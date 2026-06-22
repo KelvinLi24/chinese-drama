@@ -164,6 +164,14 @@ export class VRControllerSystem {
     });
     if (line) context.fillText(line, x, y);
   }
+  exitVR() {
+    const session = this.engine.renderer.xr.getSession();
+    if (session) {
+      session.end().catch((error) => {
+        console.warn('[WebXR] 退出 VR 失败', error);
+      });
+    }
+  }
 
   async enterVR() {
     if (!this.supported) {
@@ -173,7 +181,8 @@ export class VRControllerSystem {
     try {
       const session = await beginImmersiveVRFromUserGesture({
         navigatorXR: navigator.xr,
-        renderer: this.engine.renderer
+        renderer: this.engine.renderer,
+        diagnostics: this.diagnostics
       });
       this.sessionActive = true;
       this.playerController.setXRMode(true);
@@ -278,6 +287,8 @@ export class VRControllerSystem {
     };
   }
 }
+
+
 
 
 
