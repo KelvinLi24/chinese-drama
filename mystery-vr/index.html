@@ -34,9 +34,9 @@
             追查那道不该出现在第七声锣之后的封门暗令。
           </p>
           <div class="launch-actions">
-            <button id="startButton" class="launch-button" type="button">开始探索</button>
             <div id="xrButtonHost" class="xr-button-host"></div>
-            <button id="helpButton" class="launch-button secondary" type="button">操作说明</button>
+            <button id="startButton" class="launch-button" type="button">开始探索</button>
+                        <button id="helpButton" class="launch-button secondary" type="button">操作说明</button>
             <a class="launch-button secondary" href="../main-site/index.html">返回资料馆</a>
           </div>
           <p id="xrSupportLabel" class="support-copy">
@@ -69,8 +69,9 @@
       <div id="loadingOverlay" class="game-overlay hidden">
         <div class="overlay-card loading-card">
           <div class="loader-ring"></div>
-          <h3>正在重构戏中声境……</h3>
+          <h3 id="loadingTitle">正在重构戏中声境……</h3>
           <p id="loadingText">正在调入场景资源……</p>
+          <p id="loadingMeta" class="panel-stats">当前进度：0%</p>
         </div>
       </div>
 
@@ -78,6 +79,7 @@
         <div class="overlay-card">
           <h3 id="errorTitle">资源加载失败</h3>
           <p id="errorText">当前场景资源未能成功载入，请返回起始页后重试。</p>
+          <button id="errorRetryButton" class="launch-button secondary" type="button">重试当前场景</button>
           <button id="errorBackButton" class="launch-button secondary" type="button">返回起始页</button>
         </div>
       </div>
@@ -86,6 +88,8 @@
         <div class="hud-panel hud-left">
           <p>当前场景：<strong id="hudScene">序章粤剧剧场</strong></p>
           <p>当前目标：<strong id="hudObjective">靠近引路伶人，确认你的身份与第一步调查目标。</strong></p>
+          <div id="xrHudButtonDock" class="xr-button-dock"></div>
+          <p id="xrHudSupportLabel" class="support-copy compact">场景内可随时切换 VR / 桌面模式。</p>
         </div>
         <div class="hud-panel hud-right">
           <p>已收集线索：<strong id="hudClueCount">0 / 12</strong></p>
@@ -124,7 +128,7 @@
           </div>
           <button id="mapCloseButton" class="mini-button" type="button">关闭</button>
         </div>
-        <p class="panel-stats">仅显示已解锁的正式调查场景。</p>
+        <p class="panel-stats">显示正式调查场景与当前解锁状态。</p>
         <div id="sceneMapList" class="scene-map-list"></div>
       </section>
 
@@ -139,6 +143,8 @@
           <button id="resumeButton" class="launch-button" type="button">继续探索</button>
           <button id="pauseHelpButton" class="launch-button secondary" type="button">操作说明</button>
           <button id="resetPositionButton" class="launch-button secondary" type="button">重置站位</button>
+          <div id="xrPauseDock" class="xr-button-dock"></div>
+          <p id="xrPauseSupportLabel" class="support-copy compact">VR 模式会沿用当前剧情与所在场景。</p>
           <label class="volume-row">
             提示音量
             <input id="volumeRange" type="range" min="0" max="1" step="0.05" value="0.8" />
@@ -197,8 +203,34 @@
           <p>VR 左摇杆移动 · 右摇杆转向 · 扳机互动</p>
         </div>
       </section>
+
+      <section id="endingPanel" class="floating-panel ending-panel hidden">
+        <div class="panel-header">
+          <div>
+            <p class="panel-eyebrow">现实结局页</p>
+            <h3 id="endingTitle">《六国大封相：第七声锣》</h3>
+          </div>
+          <button id="endingReturnButton" class="mini-button" type="button">返回资料馆</button>
+        </div>
+        <p id="endingBody" class="dialogue-text"></p>
+        <p id="endingStats" class="panel-stats"></p>
+        <p id="endingChains" class="panel-stats"></p>
+        <div class="launch-actions compact">
+          <button id="endingContinueButton" class="launch-button secondary" type="button">继续探索场景</button>
+          <button id="endingRestartButton" class="launch-button secondary" type="button">重新开始</button>
+        </div>
+      </section>
     </div>
 
-    <script type="module" src="./scripts/main.js?v=20260621-08"></script>
+    <script type="module" src="./scripts/main.js?v=20260622-02"></script>
   </body>
 </html>
+
+
+
+
+
+
+
+
+

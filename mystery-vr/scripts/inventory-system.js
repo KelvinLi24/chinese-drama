@@ -25,10 +25,10 @@
     return this.items.filter((item) => item.isKey).length;
   }
 
-  render({ objectiveText = '继续在戏中局里搜集关键证据。', total = 12, keyTotal = 4 } = {}) {
+  render({ objectiveText = '继续在戏中局里搜集关键证据。', stats = { total: 0, keyTotal: 0, collectedCount: this.items.length, collectedKeyCount: this.countKeyClues() } } = {}) {
     if (!this.archiveList) return;
     this.archiveObjective.textContent = objectiveText;
-    this.archiveStats.textContent = `已收录 ${this.items.length} / ${total} ｜ 关键线索 ${this.countKeyClues()} / ${keyTotal}`;
+    this.archiveStats.textContent = `已收录 ${stats.collectedCount} / ${stats.total} ｜ 关键线索 ${stats.collectedKeyCount} / ${stats.keyTotal}`;
 
     const grouped = new Map();
     this.items.forEach((item) => {

@@ -38,9 +38,7 @@ const objectAssetMap = {
 const sceneAssetMap = {
   书房密室: { imagePath: assetPath("scene", "书房密室", "png"), modelPath: assetPath("scene", "书房密室", "glb") },
   序章粤剧剧场: { imagePath: assetPath("scene", "序章粤剧剧场", "png"), modelPath: assetPath("scene", "序章粤剧剧场", "glb") },
-  "粤剧戏棚(1)": { imagePath: assetPath("scene", "粤剧戏棚(1)", "png"), modelPath: assetPath("scene", "粤剧戏棚(1)", "glb") },
-  "粤剧戏棚(2)": { imagePath: assetPath("scene", "粤剧戏棚(2)", "png"), modelPath: assetPath("scene", "粤剧戏棚(2)", "glb") },
-  "粤剧戏棚(3)": { imagePath: assetPath("scene", "粤剧戏棚(3)", "png"), modelPath: assetPath("scene", "粤剧戏棚(3)", "glb") },
+  粤剧戏棚: { imagePath: assetPath("scene", "粤剧戏棚", "png"), modelPath: assetPath("scene", "粤剧戏棚", "glb") },
   封相朝堂: { imagePath: assetPath("scene", "封相朝堂", "png"), modelPath: assetPath("scene", "封相朝堂", "glb") },
   院子: { imagePath: assetPath("scene", "院子", "png"), modelPath: assetPath("scene", "院子", "glb") }
 };
@@ -534,51 +532,20 @@ export const sceneExhibits = [
     ]
   },
   {
-    id: "opera-shed-1",
-    name: "粤剧戏棚(1)",
+    id: "opera-shed",
+    name: "粤剧戏棚",
     category: "场景",
-    sceneType: "戏棚 / 舞台前区",
+    sceneType: "戏棚 / 终章舞台空间",
     sceneGroup: "戏曲空间",
-    role: "从台口与鼓位观察戏棚主表演区",
-    description: "戏棚前区强调人物登台、鼓点引戏与观众视线的集中关系。",
-    soundscape: ["台口脚步", "板鼓试点", "呼吸收束"],
-    soundscapeScene: "粤剧戏棚前区",
-    controls: { mode: "可漫游", canOrbit: true, canPan: true, canZoom: true, canEnterScene: true, minDistance: 1.8, maxDistance: 14, maxPolarAngle: Math.PI * 0.48, minPolarAngle: Math.PI * 0.12, enableDamping: true, dampingFactor: 0.08, autoRotate: false },
+    role: "作为粤剧终章演出、舞台群像与声景回收的核心场域",
+    description: "戏棚既是演出空间，也是让封相礼、群像人物与第七声锣回到舞台语境中的终章场景。",
+    soundscape: ["锣鼓收束", "台前唱腔", "幕布轻响"],
+    soundscapeScene: "粤剧戏棚",
+    controls: { mode: "轨道观察", canOrbit: true, canPan: true, canZoom: true, canEnterScene: true, minDistance: 1.8, maxDistance: 14, maxPolarAngle: Math.PI * 0.48, minPolarAngle: Math.PI * 0.12, enableDamping: true, dampingFactor: 0.08, autoRotate: false },
     hotspots: [
-      { id: "center-stage", label: "台口中心", type: "舞台观察", description: "适合理解人物如何从第一步进入表演状态。", position: [0, 1.4, 0] },
-      { id: "percussion-seat", label: "鼓位一角", type: "声景提示", description: "从鼓位理解节奏如何带动画面。", position: [1.9, 1.1, -0.4] }
-    ]
-  },
-  {
-    id: "opera-shed-2",
-    name: "粤剧戏棚(2)",
-    category: "场景",
-    sceneType: "戏棚 / 侧台区域",
-    sceneGroup: "戏曲空间",
-    role: "查看侧台转身、出入场与帷幕关系",
-    description: "侧台区域更接近人物换位、身段转折与出入场的舞台节奏。",
-    soundscape: ["帘幕轻响", "靴底擦地", "候场换气"],
-    soundscapeScene: "粤剧戏棚侧台",
-    controls: { mode: "可漫游", canOrbit: true, canPan: true, canZoom: true, canEnterScene: true, minDistance: 1.8, maxDistance: 14, maxPolarAngle: Math.PI * 0.48, minPolarAngle: Math.PI * 0.12, enableDamping: true, dampingFactor: 0.08, autoRotate: false },
-    hotspots: [
-      { id: "backstage-entry", label: "后台入口", type: "动线观察", description: "出入场动线与剧情转换常从这里发生。", position: [-1.6, 1.25, -0.9] },
-      { id: "side-curtain", label: "侧幕关系", type: "舞台观察", description: "观看人物如何借侧幕隐藏或转折。", position: [1.4, 1.2, 0.8] }
-    ]
-  },
-  {
-    id: "opera-shed-3",
-    name: "粤剧戏棚(3)",
-    category: "场景",
-    sceneType: "戏棚 / 观演交界",
-    sceneGroup: "戏曲空间",
-    role: "从观演关系理解戏棚空间与声音包裹感",
-    description: "在观演交界处，人物、唱腔与空间距离会共同塑造观众的入戏方式。",
-    soundscape: ["场内回响", "观演气流", "锣鼓余音"],
-    soundscapeScene: "粤剧戏棚观演区",
-    controls: { mode: "可漫游", canOrbit: true, canPan: true, canZoom: true, canEnterScene: true, minDistance: 1.8, maxDistance: 14, maxPolarAngle: Math.PI * 0.48, minPolarAngle: Math.PI * 0.12, enableDamping: true, dampingFactor: 0.08, autoRotate: false },
-    hotspots: [
-      { id: "audience-zone", label: "观演边界", type: "空间观察", description: "从边界位置体会戏曲表演与观看的互动。", position: [0, 1.15, 1.8] },
-      { id: "sound-center", label: "声场中心", type: "声景提示", description: "适合判断哪一类声音最能先把人带入戏。", position: [0.4, 1.35, -0.2] }
+      { id: "opera-stage-center", label: "戏棚中心", type: "终章舞台", description: "适合观察终章群像与舞台中心调度。", position: [0, 1.4, 0] },
+      { id: "opera-side-stage", label: "侧台道具", type: "戏曲陈设", description: "从侧台位置查看凤冠、折扇与令牌如何回到戏曲语境。", position: [1.8, 1.18, -0.6] },
+      { id: "opera-audience-edge", label: "观演关系", type: "空间观察", description: "从观众边缘位置理解戏台、演员与叙事收束的关系。", position: [-1.5, 1.22, 1.6] }
     ]
   },
   {

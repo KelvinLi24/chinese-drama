@@ -3,9 +3,62 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 export const sharedLoader = new GLTFLoader();
 const DOWN = new THREE.Vector3(0, -1, 0);
+const SHARED_FLOOR_RAYCASTER = new THREE.Raycaster();
+const SHARED_NORMAL_MATRIX = new THREE.Matrix3();
+const PERF = {
+  fps: 0,
+  frameTimeMs: 0,
+  avgFrameTimeMs: 0,
+  last60: [],
+  renderMode: '桌面',
+  raycastsThisFrame: 0,
+  box3ThisFrame: 0,
+  traverseThisFrame: 0
+};
+
+function resetPerfFrame(delta, xrPresenting) {
+  PERF.frameTimeMs = Number((delta * 1000).toFixed(2));
+  PERF.fps = delta > 0 ? Math.round(1 / delta) : 0;
+  PERF.renderMode = xrPresenting ? 'XR' : '桌面';
+  PERF.raycastsThisFrame = 0;
+  PERF.box3ThisFrame = 0;
+  PERF.traverseThisFrame = 0;
+}
+
+function finalizePerfFrame() {
+  PERF.last60.push(PERF.frameTimeMs);
+  if (PERF.last60.length > 60) PERF.last60.shift();
+  const total = PERF.last60.reduce((sum, value) => sum + value, 0);
+  PERF.avgFrameTimeMs = Number((total / Math.max(PERF.last60.length, 1)).toFixed(2));
+}
+
+export function getPerformanceSnapshot() {
+  return {
+    fps: PERF.fps,
+    frameTimeMs: PERF.frameTimeMs,
+    avgFrameTimeMs: PERF.avgFrameTimeMs,
+    renderMode: PERF.renderMode,
+    raycastsThisFrame: PERF.raycastsThisFrame,
+    box3ThisFrame: PERF.box3ThisFrame,
+    traverseThisFrame: PERF.traverseThisFrame
+  };
+}
+
+export function recordRaycast(count = 1) {
+  PERF.raycastsThisFrame += count;
+}
+
+export function recordBox3(count = 1) {
+  PERF.box3ThisFrame += count;
+}
+
+export function recordTraverse(count = 1) {
+  PERF.traverseThisFrame += count;
+}
 
 export function normalizeToTargetHeight(object, targetHeight = 1.75, correctionScale = 1) {
   object.updateMatrixWorld(true);
+  recordBox3();
   const box = new THREE.Box3().setFromObject(object);
   const size = box.getSize(new THREE.Vector3());
   const height = Math.max(size.y, 0.0001);
@@ -13,6 +66,7 @@ export function normalizeToTargetHeight(object, targetHeight = 1.75, correctionS
   object.scale.setScalar(scale);
 
   object.updateMatrixWorld(true);
+  recordBox3();
   const nextBox = new THREE.Box3().setFromObject(object);
   const nextCenter = nextBox.getCenter(new THREE.Vector3());
   object.position.x -= nextCenter.x;
@@ -21,6 +75,7 @@ export function normalizeToTargetHeight(object, targetHeight = 1.75, correctionS
   object.userData.groundLift = object.position.y;
   object.updateMatrixWorld(true);
 
+  recordBox3();
   const finalBox = new THREE.Box3().setFromObject(object);
   return {
     scale,
@@ -28,8 +83,41 @@ export function normalizeToTargetHeight(object, targetHeight = 1.75, correctionS
   };
 }
 
+export function liftVisualModelToAnchor(visualRoot, { offsetY = 0.01 } = {}) {
+  if (!visualRoot) return { footOffset: 0, height: 0 };
+  visualRoot.updateMatrixWorld(true);
+  recordBox3();
+  const box = new THREE.Box3().setFromObject(visualRoot);
+  const footOffset = -box.min.y + offsetY;
+  visualRoot.position.y += footOffset;
+  visualRoot.userData.baseLiftOffset = visualRoot.position.y;
+  visualRoot.userData.baseScale = visualRoot.scale.clone();
+  visualRoot.updateMatrixWorld(true);
+  recordBox3();
+  const liftedBox = new THREE.Box3().setFromObject(visualRoot);
+  return {
+    footOffset,
+    height: liftedBox.getSize(new THREE.Vector3()).y
+  };
+}
+
+export function scaleVisualRootWithLift(visualRoot, multiplier = 1) {
+  if (!visualRoot) return { liftOffset: 0, scale: new THREE.Vector3(1, 1, 1) };
+  const baseScale = visualRoot.userData.baseScale?.clone?.() ?? visualRoot.scale.clone();
+  const baseLiftOffset = visualRoot.userData.baseLiftOffset ?? visualRoot.position.y ?? 0;
+  const safeMultiplier = Number.isFinite(multiplier) ? multiplier : 1;
+  visualRoot.scale.copy(baseScale).multiplyScalar(safeMultiplier);
+  visualRoot.position.y = baseLiftOffset * safeMultiplier;
+  visualRoot.updateMatrixWorld(true);
+  return {
+    liftOffset: visualRoot.position.y,
+    scale: visualRoot.scale.clone()
+  };
+}
+
 export function centerObjectToWorld(object) {
   object.updateMatrixWorld(true);
+  recordBox3();
   const box = new THREE.Box3().setFromObject(object);
   const center = box.getCenter(new THREE.Vector3());
   object.position.x -= center.x;
@@ -41,6 +129,7 @@ export function centerObjectToWorld(object) {
 
 export function getObjectBounds(object) {
   object.updateMatrixWorld(true);
+  recordBox3();
   const box = new THREE.Box3().setFromObject(object);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
@@ -49,6 +138,7 @@ export function getObjectBounds(object) {
 
 export function disposeHierarchy(root) {
   if (!root) return;
+  recordTraverse();
   root.traverse((child) => {
     if (child.geometry) child.geometry.dispose?.();
     if (child.material) {
@@ -107,6 +197,7 @@ export function logAnimationNames(title, animations = []) {
 
 export function collectSceneColliders(root, { includeInvisible = false } = {}) {
   const colliders = [];
+  recordTraverse();
   root?.traverse((child) => {
     if (!child.isMesh) return;
     if (!includeInvisible && child.visible === false) return;
@@ -124,18 +215,29 @@ export function sampleFloorPoint(x, z, {
   referenceY = null,
   maxRise = 2.2,
   maxDrop = 12,
+  minUpwardNormal = 0.55,
   target = new THREE.Vector3()
 } = {}) {
   if (!sceneColliders.length) return null;
   const originY = referenceY == null ? rayStartHeight : referenceY + rayStartHeight;
-  const raycaster = new THREE.Raycaster(new THREE.Vector3(x, originY, z), DOWN, 0, maxDistance);
-  const hits = raycaster.intersectObjects(sceneColliders, true);
+  SHARED_FLOOR_RAYCASTER.ray.origin.set(x, originY, z);
+  SHARED_FLOOR_RAYCASTER.ray.direction.copy(DOWN);
+  SHARED_FLOOR_RAYCASTER.near = 0;
+  SHARED_FLOOR_RAYCASTER.far = maxDistance;
+  recordRaycast();
+  const hits = SHARED_FLOOR_RAYCASTER.intersectObjects(sceneColliders, true);
   if (!hits.length) return null;
+
+  const upwardHits = hits.filter((hit) => {
+    if (!hit.face?.normal || !hit.object?.matrixWorld) return true;
+    const worldNormal = hit.face.normal.clone().applyMatrix3(SHARED_NORMAL_MATRIX.getNormalMatrix(hit.object.matrixWorld)).normalize();
+    return worldNormal.y >= minUpwardNormal;
+  });
 
   const candidateHits =
     referenceY == null
-      ? hits
-      : hits.filter((hit) => hit.point.y <= referenceY + maxRise && hit.point.y >= referenceY - maxDrop);
+      ? upwardHits
+      : upwardHits.filter((hit) => hit.point.y <= referenceY + maxRise && hit.point.y >= referenceY - maxDrop);
 
   if (!candidateHits.length) return null;
   target.copy((prefer === "lowest" ? candidateHits[candidateHits.length - 1] : candidateHits[0]).point);
@@ -170,6 +272,12 @@ export function snapObjectToFloor(object, {
   return point;
 }
 
+export function waitForNextFrame() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+  });
+}
+
 export class GameEngine {
   constructor({ canvas, dom, onResize }) {
     this.canvas = canvas;
@@ -183,6 +291,7 @@ export class GameEngine {
     this.sceneColliders = [];
     this.sceneMetrics = null;
     this.debugEnabled = false;
+    this.renderLoopActive = false;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color("#150809");
@@ -202,6 +311,7 @@ export class GameEngine {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.98;
     this.renderer.xr.enabled = true;
+    this.renderer.xr.setReferenceSpaceType('local-floor');
 
     this.worldRoot = new THREE.Group();
     this.scene.add(this.worldRoot);
@@ -308,20 +418,39 @@ export class GameEngine {
     this.worldRoot.remove(object);
   }
 
+  recordRaycast(count = 1) {
+    recordRaycast(count);
+  }
+
   start(renderHook) {
+    this.renderLoopActive = true;
     const tick = () => {
-      this.frameId = window.requestAnimationFrame(tick);
       const delta = Math.min(this.clock.getDelta(), 0.05);
+      resetPerfFrame(delta, this.renderer.xr.isPresenting);
       this.mixers.forEach((mixer) => mixer.update(delta));
       this.updaters.forEach((updater) => updater(delta));
       renderHook?.(delta);
       this.renderer.render(this.scene, this.camera);
+      finalizePerfFrame();
     };
-    tick();
+    this.renderer.setAnimationLoop(tick);
   }
 
   stop() {
+    this.renderLoopActive = false;
+    this.renderer.setAnimationLoop(null);
     window.cancelAnimationFrame(this.frameId);
+  }
+
+  getPerformanceSnapshot() {
+    return {
+      ...getPerformanceSnapshot(),
+      rendererXrEnabled: this.renderer.xr.enabled,
+      xrPresenting: this.renderer.xr.isPresenting,
+      renderLoopActive: this.renderLoopActive,
+      sceneColliderCount: this.sceneColliders.length,
+      extraAnimationFrameLoop: false
+    };
   }
 
   dispose() {

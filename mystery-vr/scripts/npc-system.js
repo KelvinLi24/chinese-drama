@@ -2,8 +2,10 @@
 import {
   createFallbackMarker,
   findBestClip,
+  liftVisualModelToAnchor,
   logAnimationNames,
   normalizeToTargetHeight,
+  scaleVisualRootWithLift,
   sharedLoader,
   snapObjectToFloor
 } from './game-engine.js';
@@ -21,23 +23,32 @@ function sanitizeAnimationClip(clip) {
   return clone;
 }
 
+function prepareCharacterMaterials(root) {
+  root.traverse((child) => {
+    if (!child.isMesh) return;
+    child.castShadow = false;
+    child.receiveShadow = false;
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    materials.forEach((material) => {
+      if (material.map) material.map.colorSpace = THREE.SRGBColorSpace;
+      material.envMapIntensity = 0.4;
+    });
+  });
+}
+
 export async function createCharacterActor({ manifest, engine, fallbackColor }) {
   const loadCharacter = async (path) => {
     const gltf = await sharedLoader.loadAsync(path);
-    const root = gltf.scene;
-    root.traverse((child) => {
-      if (!child.isMesh) return;
-      child.castShadow = false;
-      child.receiveShadow = false;
-      const materials = Array.isArray(child.material) ? child.material : [child.material];
-      materials.forEach((material) => {
-        if (material.map) material.map.colorSpace = THREE.SRGBColorSpace;
-      });
-    });
+    const visual = gltf.scene;
+    prepareCharacterMaterials(visual);
+    normalizeToTargetHeight(visual, manifest.targetHeight ?? 1.75, manifest.scaleCorrection ?? 1);
+    liftVisualModelToAnchor(visual, { offsetY: 0.008 });
 
-    normalizeToTargetHeight(root, manifest.targetHeight ?? 1.75, manifest.scaleCorrection ?? 1);
+    const root = new THREE.Group();
+    root.add(visual);
+
     const sanitizedAnimations = (gltf.animations ?? []).map((clip) => sanitizeAnimationClip(clip));
-    const mixer = sanitizedAnimations.length ? new THREE.AnimationMixer(root) : null;
+    const mixer = sanitizedAnimations.length ? new THREE.AnimationMixer(visual) : null;
     const animationNames = logAnimationNames(manifest.title, sanitizedAnimations);
     const actions = {};
 
@@ -55,7 +66,7 @@ export async function createCharacterActor({ manifest, engine, fallbackColor }) 
       engine.addMixer(mixer);
     }
 
-    return { root, mixer, actions, animationNames, currentAction: null };
+    return { root, visual, mixer, actions, animationNames, currentAction: null };
   };
 
   try {
@@ -73,8 +84,13 @@ export async function createCharacterActor({ manifest, engine, fallbackColor }) 
     }
   }
 
+  const fallbackVisual = createFallbackMarker({ label: `${manifest?.title ?? '角色'}占位`, color: fallbackColor ?? '#8d2421' });
+  liftVisualModelToAnchor(fallbackVisual, { offsetY: 0.008 });
+  const fallbackRoot = new THREE.Group();
+  fallbackRoot.add(fallbackVisual);
   return {
-    root: createFallbackMarker({ label: `${manifest?.title ?? '角色'}占位`, color: fallbackColor ?? '#8d2421' }),
+    root: fallbackRoot,
+    visual: fallbackVisual,
     mixer: null,
     actions: {},
     animationNames: [],
@@ -93,7 +109,7 @@ export class NPCSystem {
     this.actorMap = new Map();
   }
 
-  async loadSceneNPCs(sceneId, sceneLayout = {}, canSpawn = () => true) {
+  async loadSceneNPCs(sceneId, sceneLayout = {}, canSpawn = () => true, onProgress = null) {
     if (!canSpawn()) return;
     this.clear();
     const layout = sceneLayout?.npcs ?? [];
@@ -104,16 +120,29 @@ export class NPCSystem {
       const actor = await createCharacterActor({ manifest, engine: this.engine, fallbackColor: '#7f3b2c' });
       if (!canSpawn()) return;
 
-      actor.root.position.set(...npcLayout.position);
+      const anchorDefinition = npcLayout.anchor ? sceneLayout?.anchors?.[npcLayout.anchor] : null;
+      const basePosition = anchorDefinition?.position ?? npcLayout.position ?? [0, 0, 0];
+      actor.root.position.set(...basePosition);
+      if (npcLayout.positionOffset) {
+        actor.root.position.add(new THREE.Vector3(...npcLayout.positionOffset));
+      }
       actor.root.rotation.y = npcLayout.rotationY ?? 0;
-      actor.root.scale.multiplyScalar(npcLayout.scale ?? 1);
+      if (actor.visual) {
+        scaleVisualRootWithLift(actor.visual, (npcLayout.scale ?? 1) * (sceneLayout.sceneCharacterScaleMultiplier ?? 1));
+        actor.visual.rotation.y = manifest.modelForwardOffsetY ?? 0;
+      }
+
+      if (anchorDefinition?.type === 'surface') {
+        actor.root.position.y += npcLayout.surfaceClearance ?? 0.008;
+      }
+
       if (npcLayout.floorSnap !== false) {
         snapObjectToFloor(actor.root, {
           sceneColliders: this.engine.sceneColliders,
-          offsetY: 0.01,
-          rayStartHeight: 12,
-          maxRise: 2.2,
-          maxDrop: 14,
+          offsetY: npcLayout.floorClearance ?? 0.008,
+          rayStartHeight: 14,
+          maxRise: 2.6,
+          maxDrop: 20,
           prefer: 'highest'
         });
       }
@@ -128,24 +157,27 @@ export class NPCSystem {
       this.spawnedNPCs.push({ sceneId, definition: npcLayout, actor });
       this.actorMap.set(npcLayout.id, actor);
 
-      if (npcLayout.interactable === false) return;
-      this.interactionSystem.register({
-        id: npcLayout.id,
-        sceneId,
-        object3D: actor.root,
-        type: 'npc',
-        displayName: npcLayout.displayName ?? manifest.title,
-        promptTitle: npcLayout.displayName ?? manifest.title,
-        promptSubtitle: npcLayout.subtitle ?? manifest.role,
-        subtitle: npcLayout.subtitle ?? manifest.role,
-        actionLabel: '交谈',
-        interactionRange: npcLayout.interactionRadius ?? 3.2,
-        canInteract: () => this.#checkNpcAvailability(npcLayout),
-        enabled: () => npcLayout.interactable !== false,
-        isVisible: () => this.#isNpcVisible(npcLayout),
-        focusHeight: (manifest.targetHeight ?? 1.75) + 0.18,
-        onInteract: () => this.onNpcInteract?.(npcLayout, actor)
-      });
+      if (npcLayout.interactable !== false) {
+        this.interactionSystem.register({
+          id: npcLayout.id,
+          sceneId,
+          object3D: actor.root,
+          type: 'npc',
+          displayName: npcLayout.displayName ?? manifest.title,
+          promptTitle: npcLayout.displayName ?? manifest.title,
+          promptSubtitle: npcLayout.subtitle ?? manifest.role,
+          subtitle: npcLayout.subtitle ?? manifest.role,
+          actionLabel: '交谈',
+          interactionRange: npcLayout.interactionRadius ?? 3.2,
+          canInteract: () => this.#checkNpcAvailability(npcLayout),
+          enabled: () => npcLayout.interactable !== false,
+          isVisible: () => this.#isNpcVisible(npcLayout),
+          focusHeight: (manifest.targetHeight ?? 1.75) + 0.18,
+          onInteract: () => this.onNpcInteract?.(npcLayout, actor)
+        });
+      }
+
+      onProgress?.(npcLayout.id);
     });
 
     await Promise.all(tasks);

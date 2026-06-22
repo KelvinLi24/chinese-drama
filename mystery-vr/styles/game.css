@@ -230,6 +230,14 @@ a {
   display: contents;
 }
 
+.xr-button-dock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.9rem;
+  pointer-events: auto;
+}
+
 .game-hud {
   position: absolute;
   top: 16px;
@@ -261,6 +269,7 @@ a {
 .hud-panel {
   padding: 12px 14px;
   min-width: min(360px, 34vw);
+  pointer-events: auto;
 }
 
 .hud-panel p {
@@ -556,6 +565,52 @@ a {
     top: auto;
     bottom: 206px;
   }
+}
+
+
+
+.ending-panel {
+  top: 50%;
+  left: 50%;
+  width: min(620px, calc(100vw - 32px));
+  max-height: calc(100vh - 80px);
+  transform: translate(-50%, -50%);
+}
+
+.loading-card .panel-stats {
+  margin-top: 8px;
+  color: var(--gold);
+}
+
+
+.xr-inline-entry {
+  margin-top: 0.85rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.xr-button-host {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.support-copy.compact {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: rgba(244, 221, 181, 0.84);
+}
+
+.debug-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ending-panel {
+  max-width: 40rem;
 }
 
 

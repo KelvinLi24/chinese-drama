@@ -6,10 +6,10 @@
   getExhibits,
   getFeaturedExhibit,
   getHomeStats
-} from "./catalog.js";
-import { createPanoramaViewer } from "./panoramaViewer.js";
-import { createHeroPreview } from "./previewStage.js";
-import { createViewer } from "./viewer.js";
+} from "./catalog.js?v=20260622-01";
+import { createPanoramaViewer } from "./panoramaViewer.js?v=20260622-01";
+import { createHeroPreview } from "./previewStage.js?v=20260622-01";
+import { createViewer } from "./viewer.js?v=20260622-01";
 
 const app = document.querySelector("#app");
 const globalBackButton = document.querySelector("#globalBackButton");
@@ -800,3 +800,4 @@ window.addEventListener("hashchange", renderRoute);
 window.addEventListener("beforeunload", cleanupViewer);
 
 renderRoute();
+

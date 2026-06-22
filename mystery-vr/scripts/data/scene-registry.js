@@ -15,6 +15,9 @@ const scene = (id, title, assetBase, config, extras = {}) => ({
   playerStart: config.playerStart,
   playerRotationY: config.playerFacing,
   playerVisualScale: config.playerVisualScale ?? 1,
+  characterScaleMultiplier: config.characterScaleMultiplier ?? 1,
+  propScaleMultiplier: config.propScaleMultiplier ?? 1,
+  propHeightMultiplier: config.propHeightMultiplier ?? 1,
   walkArea: config.walkArea,
   loadCopy: extras.loadCopy,
   ambience: extras.ambience ?? title,
@@ -27,6 +30,12 @@ export const VIDEO_REGISTRY = {
     id: 'prologue-video',
     title: '序章影片',
     path: resolveAsset('../../assets/videos/序章影片.mp4')
+  },
+  ending: {
+    id: 'ending-video',
+    title: '终章影片',
+    path: '',
+    expectedPath: 'mystery-vr/assets/videos/终章影片.mp4'
   }
 };
 

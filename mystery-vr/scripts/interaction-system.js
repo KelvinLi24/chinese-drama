@@ -16,6 +16,8 @@ export class InteractionSystem {
     this.xrFocus = null;
     this.raycaster = new THREE.Raycaster();
     this.tempPromptTimer = 0;
+    this._tmpCameraVec = new THREE.Vector3();
+    this._tmpPlayerTarget = new THREE.Vector3();
   }
 
   register(config) {
@@ -70,34 +72,26 @@ export class InteractionSystem {
       return;
     }
 
-    this.#setAllHighlights(false);
-    this.focusedEntry = null;
-
     const visibleEntries = [...this.entries.values()].filter((entry) => this.#isEntryVisible(entry));
     if (!visibleEntries.length || !camera || !playerPosition) {
+      this.#applyDesktopFocus(null);
       this.#hideHints();
       return;
     }
 
     this.raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-    const hitEntries = [];
-    visibleEntries.forEach((entry) => {
-      const intersections = this.raycaster.intersectObject(entry.object3D, true);
-      if (!intersections.length) return;
-      const resolved = this.#resolveEntryFromObject(intersections[0].object);
-      if (!resolved) return;
-      const distance = entry.object3D.getWorldPosition(new THREE.Vector3()).distanceTo(playerPosition);
-      hitEntries.push({ entry: resolved, hitDistance: intersections[0].distance, worldDistance: distance });
-    });
+    this.engine.recordRaycast?.();
+    const roots = visibleEntries.map((entry) => entry.object3D);
+    const intersections = this.raycaster.intersectObjects(roots, true);
+    let chosen = intersections
+      .map((intersection) => this.#resolveEntryFromObject(intersection.object))
+      .find(Boolean) ?? null;
 
-    hitEntries.sort((left, right) => left.hitDistance - right.hitDistance || left.worldDistance - right.worldDistance);
-
-    let chosen = hitEntries[0]?.entry ?? null;
     if (!chosen) {
-      const forward = camera.getWorldDirection(new THREE.Vector3()).setY(0).normalize();
+      const forward = camera.getWorldDirection(this._tmpCameraVec).setY(0).normalize();
       let bestScore = -Infinity;
       visibleEntries.forEach((entry) => {
-        const target = entry.object3D.getWorldPosition(new THREE.Vector3());
+        const target = entry.object3D.getWorldPosition(this._tmpPlayerTarget).clone();
         const delta = target.sub(playerPosition);
         const distance = delta.length();
         if (distance > entry.interactionRange * 1.2) return;
@@ -113,13 +107,12 @@ export class InteractionSystem {
     }
 
     if (!chosen) {
+      this.#applyDesktopFocus(null);
       this.#hideHints();
       return;
     }
 
-    this.focusedEntry = chosen;
-    this.lastFocusedEntry = chosen;
-    this.#setHighlight(chosen, true);
+    this.#applyDesktopFocus(chosen);
     this.#showPrompt(chosen, playerPosition);
     if (chosen.type === 'npc') {
       this.#showWorldHint(chosen, camera, canvasRect, playerPosition);
@@ -130,19 +123,24 @@ export class InteractionSystem {
 
   updateXRFocus(controller, playerPosition, mode) {
     if (mode !== 'explore') {
+      if (this.xrFocus) this.#setHighlight(this.xrFocus, false);
       this.xrFocus = null;
       return null;
     }
 
-    this.#setAllHighlights(false);
     const intersections = this.raycastFromController(controller);
     const match = intersections
       .map((intersection) => this.#resolveEntryFromObject(intersection.object))
       .find(Boolean);
 
     if (!match || !this.#isEntryVisible(match)) {
+      if (this.xrFocus) this.#setHighlight(this.xrFocus, false);
       this.xrFocus = null;
       return null;
+    }
+
+    if (this.xrFocus && this.xrFocus.id !== match.id && this.xrFocus.id !== this.focusedEntry?.id) {
+      this.#setHighlight(this.xrFocus, false);
     }
 
     this.xrFocus = match;
@@ -157,6 +155,7 @@ export class InteractionSystem {
     this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
     this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
     const roots = [...this.entries.values()].filter((entry) => this.#isEntryVisible(entry)).map((entry) => entry.object3D);
+    this.engine.recordRaycast?.();
     return this.raycaster.intersectObjects(roots, true);
   }
 
@@ -286,25 +285,32 @@ export class InteractionSystem {
     });
   }
 
-  #setAllHighlights(active) {
-    this.entries.forEach((entry) => this.#setHighlight(entry, active));
-  }
-
   #hideHints() {
     this.hudPrompt?.classList.add('hidden');
     this.worldHint?.classList.add('hidden');
   }
 
   #clearFocus() {
-    this.#setAllHighlights(false);
+    if (this.focusedEntry) this.#setHighlight(this.focusedEntry, false);
+    if (this.xrFocus && this.xrFocus.id !== this.focusedEntry?.id) this.#setHighlight(this.xrFocus, false);
     this.focusedEntry = null;
     this.lastFocusedEntry = null;
     this.xrFocus = null;
     this.#hideHints();
   }
 
+  #applyDesktopFocus(entry) {
+    if (this.focusedEntry && this.focusedEntry.id !== entry?.id && this.focusedEntry.id !== this.xrFocus?.id) {
+      this.#setHighlight(this.focusedEntry, false);
+    }
+    this.focusedEntry = entry;
+    if (entry) {
+      this.lastFocusedEntry = entry;
+      this.#setHighlight(entry, true);
+    }
+  }
+
   #debug(message) {
     this.debugLogger?.(message);
   }
 }
-

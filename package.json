@@ -1,0 +1,12 @@
+﻿{
+  "name": "chinese-drama",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev-server.cjs",
+    "dev:http": "node dev-server.cjs",
+    "dev:https": "node https-dev-server.cjs",
+    "preview:https": "node https-dev-server.cjs"
+  }
+}
+

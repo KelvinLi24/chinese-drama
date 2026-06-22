@@ -2,23 +2,29 @@
 import { ASSET_MANIFEST } from './asset-manifest.js';
 import { FORMAL_SCENE_IDS, VIDEO_REGISTRY } from './data/scene-registry.js';
 import { GAME_MODES, STORY_TEXT, createInitialProgress, evaluateEnding, getCurrentObjective, getEvidenceChainState, syncSceneUnlocks } from './data/story-state.js';
-import { CLUE_DEFINITIONS, CLUE_TARGETS, DIALOGUE_DATA, ENDING_DATA } from './story-data.js';
-import { GameEngine } from './game-engine.js';
+import { CLUE_DEFINITIONS, DIALOGUE_DATA, ENDING_DATA } from './story-data.js';
+import { getCollectedClueStats } from './data/clue-registry.js?v=20260621e';
+import { GameEngine, waitForNextFrame } from './game-engine.js?v=20260621e';
 import { InteractionSystem } from './interaction-system.js';
 import { InventorySystem } from './inventory-system.js';
-import { NPCSystem } from './npc-system.js';
-import { PlayerController } from './player-controller.js';
-import { SceneManager } from './scene-manager.js';
-import { VRControllerSystem } from './vr-controller.js';
+import { NPCSystem } from './npc-system.js?v=20260622b';
+import { PlayerController } from './player-controller.js?v=20260622b';
+import { SceneManager } from './scene-manager.js?v=20260622b';
+import { SceneLoadCoordinator } from './systems/scene-load-coordinator.js?v=20260622b';
+import { VRControllerSystem } from './vr-controller.js?v=20260622b';
+import { WorldCollisionSystem } from './systems/world-collision-system.js?v=20260622c';
 
 const dom = {
   canvas: document.querySelector('#gameCanvas'),
   launchScreen: document.querySelector('#launchScreen'),
   loadingOverlay: document.querySelector('#loadingOverlay'),
+  loadingTitle: document.querySelector('#loadingTitle'),
   loadingText: document.querySelector('#loadingText'),
+  loadingMeta: document.querySelector('#loadingMeta'),
   errorOverlay: document.querySelector('#errorOverlay'),
   errorTitle: document.querySelector('#errorTitle'),
   errorText: document.querySelector('#errorText'),
+  errorRetryButton: document.querySelector('#errorRetryButton'),
   errorBackButton: document.querySelector('#errorBackButton'),
   videoOverlay: document.querySelector('#videoOverlay'),
   prologueVideo: document.querySelector('#prologueVideo'),
@@ -70,7 +76,19 @@ const dom = {
   statusToast: document.querySelector('#statusToast'),
   audioToast: document.querySelector('#audioToast'),
   xrButtonHost: document.querySelector('#xrButtonHost'),
+  xrHudButtonDock: document.querySelector('#xrHudButtonDock'),
+  xrPauseDock: document.querySelector('#xrPauseDock'),
   xrSupportLabel: document.querySelector('#xrSupportLabel'),
+  xrHudSupportLabel: document.querySelector('#xrHudSupportLabel'),
+  xrPauseSupportLabel: document.querySelector('#xrPauseSupportLabel'),
+  endingPanel: document.querySelector('#endingPanel'),
+  endingTitle: document.querySelector('#endingTitle'),
+  endingBody: document.querySelector('#endingBody'),
+  endingStats: document.querySelector('#endingStats'),
+  endingChains: document.querySelector('#endingChains'),
+  endingRestartButton: document.querySelector('#endingRestartButton'),
+  endingContinueButton: document.querySelector('#endingContinueButton'),
+  endingReturnButton: document.querySelector('#endingReturnButton'),
   debugPanel: document.querySelector('#debugPanel')
 };
 
@@ -81,7 +99,9 @@ const gameState = {
   debugEnabled: false,
   lastFps: 0,
   controlHintTimer: 0,
-  activeDialogueNpcId: ''
+  activeDialogueNpcId: '',
+  failedSceneId: '',
+  currentVideoFlow: ''
 };
 
 const engine = new GameEngine({ canvas: dom.canvas });
@@ -95,11 +115,13 @@ const inventorySystem = new InventorySystem({
   toast: dom.statusToast
 });
 const interactionSystem = new InteractionSystem({ engine, hudPrompt: dom.interactionPrompt, worldHint: dom.worldHint, debugLogger: console.warn });
+const worldCollisionSystem = new WorldCollisionSystem({ debugLogger: console.warn });
 const playerController = new PlayerController({
   engine,
   manifest: ASSET_MANIFEST,
   hudNotice: dom.statusToast,
-  canCapturePointer: () => gameState.mode === GAME_MODES.EXPLORE
+  canCapturePointer: () => gameState.mode === GAME_MODES.EXPLORE,
+  worldCollisionSystem
 });
 const npcSystem = new NPCSystem({
   engine,
@@ -108,15 +130,18 @@ const npcSystem = new NPCSystem({
   onNpcInteract: handleNpcInteraction,
   getProgress: () => progress
 });
+const loadCoordinator = new SceneLoadCoordinator({ ui: createUiHelpers() });
 const sceneManager = new SceneManager({
   engine,
   manifest: ASSET_MANIFEST,
   interactionSystem,
   inventorySystem,
+  worldCollisionSystem,
   npcSystem,
   audioSystem,
   ui: createUiHelpers(),
   progress,
+  loadCoordinator,
   onPropInteract: handlePropInteraction,
   onExitInteract: handleExitInteraction,
   onSceneReady: () => updateAllUi()
@@ -125,21 +150,29 @@ const vrSystem = new VRControllerSystem({
   engine,
   interactionSystem,
   playerController,
-  xrButtonHost: dom.xrButtonHost,
-  supportLabel: dom.xrSupportLabel,
-  getMode: () => gameState.mode
+  buttonHosts: [dom.xrButtonHost, dom.xrHudButtonDock, dom.xrPauseDock],
+  supportLabels: [dom.xrSupportLabel, dom.xrHudSupportLabel, dom.xrPauseSupportLabel],
+  getMode: () => gameState.mode,
+  getObjective: () => getCurrentObjective(progress, progress.currentSceneId || 'prologue'),
+  getFocusedInteractable: () => interactionSystem.getFocusedInteractable()
 });
 
 function createUiHelpers() {
   return {
-    showLoading(message) {
-      dom.loadingText.textContent = message;
+    showLoading(payload) {
+      const detail = typeof payload === 'string'
+        ? { title: '正在重构戏中声境……', detail: payload, percent: 0, ready: 0, total: 0 }
+        : payload;
+      dom.loadingTitle.textContent = detail.title || '正在重构戏中声境……';
+      dom.loadingText.textContent = detail.detail || '正在调入场景资源……';
+      dom.loadingMeta.textContent = detail.total
+        ? `当前进度：${detail.percent}% ｜ 已就绪 ${detail.ready} / ${detail.total} 项`
+        : `当前进度：${detail.percent ?? 0}%`;
       dom.loadingOverlay.classList.remove('hidden');
       setMode(GAME_MODES.LOADING, { silent: true });
     },
     hideLoading() {
       dom.loadingOverlay.classList.add('hidden');
-      if (gameState.mode === GAME_MODES.LOADING) setMode(GAME_MODES.EXPLORE, { silent: true });
     },
     showError(title, message) {
       dom.errorTitle.textContent = title;
@@ -159,21 +192,41 @@ function createUiHelpers() {
   };
 }
 
+function bindDomEvent(element, eventName, handler, label) {
+  if (!element) {
+    console.warn(`[界面元素缺失] ${label}`);
+    return;
+  }
+  element.addEventListener(eventName, handler);
+}
 function bindEvents() {
-  dom.startButton.addEventListener('click', startGame);
-  dom.helpButton.addEventListener('click', () => openHelp());
-  dom.pauseHelpButton.addEventListener('click', () => openHelp());
-  dom.helpCloseButton.addEventListener('click', () => closeHelp());  dom.errorBackButton.addEventListener('click', () => {
+  bindDomEvent(dom.startButton, 'click', startGame, '开始探索按钮');
+  bindDomEvent(dom.helpButton, 'click', () => openHelp(), '操作说明按钮');
+  bindDomEvent(dom.pauseHelpButton, 'click', () => openHelp(), '暂停菜单操作说明按钮');
+  bindDomEvent(dom.helpCloseButton, 'click', () => closeHelp(), '关闭操作说明按钮');
+  bindDomEvent(dom.errorBackButton, 'click', () => {
     dom.errorOverlay.classList.add('hidden');
     dom.launchScreen.classList.remove('hidden');
     setMode(GAME_MODES.MENU, { silent: true });
-  });
-  dom.dialogueCloseButton.addEventListener('click', () => closeDialogue());
-  dom.mapCloseButton.addEventListener('click', () => closeMap());
-  dom.resumeButton.addEventListener('click', () => closePause());
-  dom.resetPositionButton.addEventListener('click', () => playerController.resetToSpawn());
-  dom.volumeRange.addEventListener('input', () => audioSystem.setVolume(Number(dom.volumeRange.value)));
-  dom.inspectCloseButton.addEventListener('click', () => closeInspect());
+  }, '错误返回按钮');
+  bindDomEvent(dom.dialogueCloseButton, 'click', () => closeDialogue(), '关闭对话按钮');
+  bindDomEvent(dom.errorRetryButton, 'click', async () => {
+    if (!gameState.failedSceneId) return;
+    dom.errorOverlay.classList.add('hidden');
+    await enterScene(gameState.failedSceneId);
+  }, '重试当前场景按钮');
+  bindDomEvent(dom.endingRestartButton, 'click', () => window.location.reload(), '重新开始按钮');
+  bindDomEvent(dom.endingContinueButton, 'click', () => continueEndingExploration(), '继续探索场景按钮');
+  bindDomEvent(dom.debugPanel, 'click', handleDebugPanelClick, '开发调试面板');
+  bindDomEvent(dom.mapCloseButton, 'click', () => closeMap(), '关闭地图按钮');
+  bindDomEvent(dom.resumeButton, 'click', () => closePause(), '继续探索按钮');
+  bindDomEvent(dom.resetPositionButton, 'click', () => playerController.resetToSpawn(), '重置站位按钮');
+  bindDomEvent(dom.volumeRange, 'input', () => audioSystem.setVolume(Number(dom.volumeRange.value)), '音量滑杆');
+  bindDomEvent(dom.inspectCloseButton, 'click', () => closeInspect(), '关闭线索观察按钮');
+  bindDomEvent(dom.endingReturnButton, 'click', () => {
+    window.location.href = '../main-site/index.html';
+  }, '返回资料馆按钮');
+
   window.addEventListener('keydown', async (event) => {
     if (!gameState.hasStarted) return;
 
@@ -184,6 +237,7 @@ function bindEvents() {
     if (event.code === 'Backquote') {
       gameState.debugEnabled = !gameState.debugEnabled;
       engine.setDebugEnabled(gameState.debugEnabled);
+      worldCollisionSystem.setDebugEnabled(gameState.debugEnabled);
       sceneManager.setDebugEnabled(gameState.debugEnabled);
       return;
     }
@@ -200,6 +254,7 @@ function bindEvents() {
       if (!dom.mapPanel.classList.contains('hidden')) return closeMap();
       if (!dom.archivePanel.classList.contains('hidden')) return closeArchive();
       if (!dom.pausePanel.classList.contains('hidden')) return closePause();
+      if (!dom.endingPanel.classList.contains('hidden')) return closeEndingPanel();
       return openPause();
     }
 
@@ -215,7 +270,6 @@ function bindEvents() {
     }
   });
 }
-
 function setMode(mode, { silent = false } = {}) {
   gameState.mode = mode;
   if (mode !== GAME_MODES.EXPLORE) {
@@ -232,46 +286,90 @@ function setMode(mode, { silent = false } = {}) {
 function updateAllUi() {
   syncSceneUnlocks(progress);
   const objective = getCurrentObjective(progress, progress.currentSceneId || 'prologue');
+  const clueStats = getCollectedClueStats(progress.collectedClues);
   dom.hudObjective.textContent = objective;
   dom.hudScene.textContent = ASSET_MANIFEST.scenes[progress.currentSceneId]?.title ?? '序章粤剧剧场';
-  dom.hudClueCount.textContent = `${progress.collectedClues.size} / ${CLUE_TARGETS.total}`;
-  dom.hudKeyCount.textContent = `${inventorySystem.countKeyClues()} / ${CLUE_TARGETS.keyTotal}`;
-  inventorySystem.render({ objectiveText: objective, total: CLUE_TARGETS.total, keyTotal: CLUE_TARGETS.keyTotal });
+  dom.hudClueCount.textContent = `${clueStats.collectedCount} / ${clueStats.total}`;
+  dom.hudKeyCount.textContent = `${clueStats.collectedKeyCount} / ${clueStats.keyTotal}`;
+  inventorySystem.render({ objectiveText: objective, stats: clueStats });
   renderSceneMap();
   sceneManager.refreshDynamicState();
 }
 
 async function startGame() {
-  if (!gameState.hasStarted) {
-    gameState.hasStarted = true;
-    await playerController.init();
-    await vrSystem.init();
-    engine.start((delta) => {
-      gameState.lastFps = Math.round(1 / Math.max(delta, 0.0001));
-      playerController.setMovementLocked(gameState.mode !== GAME_MODES.EXPLORE);
-      playerController.update(delta);
-      npcSystem.update(playerController.getPosition(), delta);
-      interactionSystem.updateDesktopFocus({
-        camera: engine.camera,
-        playerPosition: playerController.getPosition(),
-        mode: gameState.mode,
-        canvasRect: dom.canvas.getBoundingClientRect()
-      });
-      vrSystem.update(delta, gameState.mode, playerController.getPosition());
-      refreshDebugOverlay();
-    });
-  }
+  if (gameState.mode === GAME_MODES.LOADING || gameState.mode === GAME_MODES.VIDEO) return;
+  dom.startButton?.setAttribute('disabled', 'disabled');
+  createUiHelpers().showLoading({
+    title: '正在启动戏中世界……',
+    detail: '正在初始化角色、视角与 WebXR 控制……',
+    percent: 0,
+    ready: 0,
+    total: 0
+  });
 
-  audioSystem.unlock();
-  dom.launchScreen.classList.add('hidden');
-  dom.hud.classList.remove('hidden');
-  await playPrologueVideo();
+  try {
+    if (!gameState.hasStarted) {
+      gameState.hasStarted = true;
+      await playerController.init();
+      engine.start((delta) => {
+        gameState.lastFps = Math.round(1 / Math.max(delta, 0.0001));
+        playerController.setMovementLocked(gameState.mode !== GAME_MODES.EXPLORE);
+        playerController.update(delta);
+        npcSystem.update(playerController.getPosition(), delta);
+        interactionSystem.updateDesktopFocus({
+          camera: engine.camera,
+          playerPosition: playerController.getPosition(),
+          mode: gameState.mode,
+          canvasRect: dom.canvas.getBoundingClientRect()
+        });
+        vrSystem.update(delta, gameState.mode, playerController.getPosition());
+        refreshDebugOverlay();
+      });
+    }
+
+    audioSystem.unlock();
+    dom.launchScreen.classList.add('hidden');
+    dom.hud.classList.remove('hidden');
+    createUiHelpers().hideLoading();
+    await playPrologueVideo();
+  } catch (error) {
+    console.error('[开始探索失败]', error);
+    gameState.hasStarted = false;
+    createUiHelpers().hideLoading();
+    createUiHelpers().showError('启动失败', `剧本杀模块初始化时发生异常：${error?.message ?? String(error)}。`);
+    dom.launchScreen.classList.remove('hidden');
+    setMode(GAME_MODES.MENU, { silent: true });
+  } finally {
+    dom.startButton?.removeAttribute('disabled');
+  }
 }
 
 async function playPrologueVideo() {
-  const videoMeta = VIDEO_REGISTRY.prologue;
-  dom.prologueVideo.src = videoMeta.path;
-  dom.videoStatus.textContent = STORY_TEXT.videoLoading[0];
+  await playVideoFlow({
+    path: VIDEO_REGISTRY.prologue.path,
+    statusText: STORY_TEXT.videoLoading[0],
+    skipLabel: '跳过序章',
+    fallbackLabel: '视频异常，直接进入剧场',
+    onFinish: async (reason) => {
+      if (reason === 'error' || reason === 'fallback') {
+        showToast('序章影片未能正常播放，已直接进入序章粤剧剧场。');
+      }
+      progress.flags.add('prologue_video_done');
+      collectClue('vocalShard', '序章影片');
+      collectClue('drumShard', '序章影片');
+      await enterScene('prologue');
+      showStoryPrompt(STORY_TEXT.prologueTransition, '序章粤剧剧场');
+    }
+  });
+}
+
+async function playVideoFlow({ path, statusText, skipLabel, fallbackLabel, onFinish }) {
+  dom.prologueVideo.pause();
+  dom.prologueVideo.currentTime = 0;
+  dom.prologueVideo.src = path;
+  dom.videoStatus.textContent = statusText;
+  dom.skipVideoButton.textContent = skipLabel;
+  dom.fallbackVideoButton.textContent = fallbackLabel;
   dom.videoOverlay.classList.remove('hidden');
   setMode(GAME_MODES.VIDEO, { silent: true });
 
@@ -283,13 +381,17 @@ async function playPrologueVideo() {
       dom.skipVideoButton.removeEventListener('click', handleSkip);
       dom.fallbackVideoButton.removeEventListener('click', handleFallback);
     };
+
     const finalize = async (reason) => {
       if (finished) return;
       finished = true;
       cleanup();
-      await finishPrologueVideo(reason);
+      dom.prologueVideo.pause();
+      dom.videoOverlay.classList.add('hidden');
+      await onFinish(reason);
       resolve();
     };
+
     const handleEnded = () => finalize('ended');
     const handleError = () => finalize('error');
     const handleSkip = () => finalize('skip');
@@ -301,64 +403,98 @@ async function playPrologueVideo() {
     dom.fallbackVideoButton.addEventListener('click', handleFallback, { once: true });
 
     dom.prologueVideo.play().catch(() => {
-      dom.videoStatus.textContent = '序章影片加载失败，仍可直接进入序章粤剧剧场。';
+      dom.videoStatus.textContent = statusText + '（视频暂未正常播放，可直接跳过。）';
     });
   });
 }
 
-async function finishPrologueVideo(reason) {
-  dom.prologueVideo.pause();
-  dom.videoOverlay.classList.add('hidden');
-  if (reason === 'error' || reason === 'fallback') {
-    showToast('序章影片未能正常播放，已直接进入序章粤剧剧场。');
+async function playEndingVideoFlow() {
+  if (!VIDEO_REGISTRY.ending.path) {
+    showToast('未找到终章影片资源，已进入文字结局页。');
+    showEndingPanel();
+    return;
   }
 
-  progress.flags.add('prologue_video_done');
-  collectClue('vocalShard', '序章影片');
-  collectClue('drumShard', '序章影片');
-  await enterScene('prologue');
-  showStoryPrompt(STORY_TEXT.prologueTransition, '序章粤剧剧场', () => {
-    if (!progress.flags.has('guide_auto_dialogue_opened')) {
-      progress.flags.add('guide_auto_dialogue_opened');
-      openDialogue('guide_intro', 'guide-performer');
+  await playVideoFlow({
+    path: VIDEO_REGISTRY.ending.path,
+    statusText: '正在回看终章锣鼓……',
+    skipLabel: '跳过终章',
+    fallbackLabel: '影片异常，直接查看结局',
+    onFinish: async (reason) => {
+      if (reason === 'error' || reason === 'fallback') {
+        showToast('终章影片未能正常播放，已进入文字结局页。');
+      }
+      showEndingPanel();
     }
   });
 }
 
 async function enterScene(sceneId, promptLines = null, promptTitle = '') {
-  setMode(GAME_MODES.LOADING, { silent: true });
-  const sceneConfig = await sceneManager.loadScene(sceneId);
-  progress.currentSceneId = sceneId;
-  playerController.setScene(sceneConfig);
-  updateAllUi();
+  try {
+    setMode(GAME_MODES.LOADING, { silent: true });
+    gameState.failedSceneId = sceneId;
+    const sceneConfig = await sceneManager.loadScene(sceneId);
+    progress.currentSceneId = sceneId;
+    playerController.setScene(sceneConfig);
+    sceneManager.markPostLoadReady('player-start', `正在校准 ${sceneConfig.title} 的出生点与视角……`);
+    updateAllUi();
+    sceneManager.markPostLoadReady('hud-ready', `正在同步 ${sceneConfig.title} 的任务与线索……`);
+    await waitForNextFrame();
+    await sceneManager.finalizeSceneLoad(sceneId, `${sceneConfig.title}已就绪。`);
+    gameState.failedSceneId = '';
+    handleSceneArrival(sceneId, sceneConfig, promptLines, promptTitle);
+  } catch (error) {
+    console.error('[场景切换失败]', sceneId, error);
+  }
+}
 
-  if (sceneId === 'court' && !progress.flags.has('court_arrival_prompt')) {
+function handleSceneArrival(sceneId, sceneConfig, promptLines, promptTitle) {
+  const shouldSkipDefaultPrompt = promptLines === false;
+  let lines = promptLines;
+  let title = promptTitle || sceneConfig.title;
+  let afterClose = null;
+
+  if (!shouldSkipDefaultPrompt && !lines && sceneId === 'court' && !progress.flags.has('court_arrival_prompt')) {
     progress.flags.add('court_arrival_prompt');
-    showStoryPrompt(STORY_TEXT.courtArrival, '封相朝堂');
-    return;
+    lines = STORY_TEXT.courtArrival;
+    title = '封相朝堂';
   }
 
-  if (sceneId === 'courtyard' && !progress.flags.has('courtyard_overheard')) {
-    showStoryPrompt(STORY_TEXT.courtyardOverhear, '院子', () => {
+  if (!shouldSkipDefaultPrompt && !lines && sceneId === 'courtyard' && !progress.flags.has('courtyard_overheard')) {
+    lines = STORY_TEXT.courtyardOverhear;
+    title = '院子';
+    afterClose = () => {
       progress.flags.add('courtyard_overheard');
       showToast('你已听清第七响后的封门暗令。');
       updateStoryProgress();
-    });
+    };
+  }
+
+  if (!shouldSkipDefaultPrompt && !lines && sceneId === 'stage' && !progress.flags.has('stage_entry_prompt')) {
+    progress.flags.add('stage_entry_prompt');
+    lines = [
+      '你已踏入粤剧戏棚的终章舞台。',
+      '朝堂里的权谋与伪诏，将在此被重新唱回戏台。',
+      '靠近粤剧伶人并按下 E，才能正式触发终章演出。'
+    ];
+    title = '粤剧戏棚';
+  }
+
+  if (!shouldSkipDefaultPrompt && !lines && sceneId === 'prologue' && progress.guideNpcDialogueState === 'ending' && progress.flags.has('ending_returned')) {
+    lines = STORY_TEXT.endingReturn;
+    title = '终局回返';
+  }
+
+  if (Array.isArray(lines) && lines.length) {
+    showStoryPrompt(lines, title, afterClose);
     return;
   }
 
-  if (sceneId === 'stage' && !progress.flags.has('stage_opened_prompt')) {
-    progress.flags.add('stage_opened_prompt');
-    showStoryPrompt(STORY_TEXT.stageEpilogueLead, '粤剧戏棚');
-    return;
-  }
+  resumeExploreControl();
+}
 
-  if (promptLines?.length) {
-    showStoryPrompt(promptLines, promptTitle || sceneConfig.title);
-    return;
-  }
-
-  setMode(GAME_MODES.EXPLORE, { silent: false });
+function openGuideDialogue() {
+  openDialogue(progress.guideNpcDialogueState === 'ending' ? 'guide_ending' : 'guide_intro', 'guide-performer');
 }
 
 function showStoryPrompt(lines, title = '入场提示', afterClose = null) {
@@ -438,7 +574,43 @@ function closeMap() {
 }
 
 function hasAnyBlockingPanel() {
-  return [dom.helpPanel, dom.pausePanel, dom.archivePanel, dom.mapPanel, dom.dialoguePanel, dom.inspectPanel].some((panel) => !panel.classList.contains('hidden'));
+  return [dom.helpPanel, dom.pausePanel, dom.archivePanel, dom.mapPanel, dom.dialoguePanel, dom.inspectPanel, dom.endingPanel].some((panel) => panel && !panel.classList.contains('hidden'));
+}
+
+function closeEndingPanel() {
+  dom.endingPanel.classList.add('hidden');
+  setMode(GAME_MODES.PAUSED, { silent: true });
+}
+
+async function handleDebugPanelClick(event) {
+  const godToggle = event.target.closest('[data-debug-god]');
+  if (godToggle) {
+    playerController.setGodMode(!playerController.getDebugState().godMode);
+    refreshDebugOverlay();
+    return;
+  }
+
+  const sceneTarget = event.target.closest('[data-debug-scene]');
+  if (sceneTarget) {
+    enterScene(sceneTarget.dataset.debugScene, false, '调试跳转');
+    return;
+  }
+
+  const anchorTarget = event.target.closest('[data-debug-anchor]');
+  if (anchorTarget) {
+    const target = sceneManager.getDebugAnchors().find((anchor) => anchor.name === anchorTarget.dataset.debugAnchor);
+    if (target) {
+      playerController.teleportTo(target.position.clone());
+      showToast(`已跳转到锚点：${target.name}`);
+    }
+  }
+}
+
+async function continueEndingExploration() {
+  dom.endingPanel.classList.add('hidden');
+  progress.guideNpcDialogueState = 'ending';
+  progress.flags.add('ending_returned');
+  await enterScene('prologue', false);
 }
 
 function openDialogue(dialogueId, npcId = '') {
@@ -509,7 +681,7 @@ function renderSceneMap() {
     .map((scene) => {
       const unlocked = progress.unlockedScenes.has(scene.id);
       const isCurrent = progress.currentSceneId === scene.id;
-      const status = isCurrent ? '当前所在场景' : unlocked ? '已解锁，可进入' : '未解锁';
+      const status = isCurrent ? '当前所在场景' : unlocked ? '已解锁，可进入' : '未解锁，需推进主线';
       const action = isCurrent ? '当前场景' : unlocked ? '进入场景' : '未解锁';
       return `
         <article class="scene-map-card ${unlocked ? 'is-unlocked' : 'is-locked'}">
@@ -555,6 +727,10 @@ function collectClue(clueId, sourceScene, overrides = {}) {
 }
 
 function handleNpcInteraction(npcLayout) {
+  if (npcLayout.id === 'guide-performer') {
+    openGuideDialogue();
+    return;
+  }
   if (progress.currentSceneId === 'court' && npcLayout.id === 'court-gongsunyan' && progress.flags.has('final_court_ready')) {
     openDialogue('final_accusation', npcLayout.id);
     return;
@@ -565,6 +741,11 @@ function handleNpcInteraction(npcLayout) {
 function handlePropInteraction(definition, manifest) {
   if (definition.id === 'study-clue-box') {
     progress.puzzleState.clueBoxPicked = true;
+    collectClue('clueBox', '书房密室', {
+      relatedCharacter: definition.relatedCharacter,
+      preview: manifest?.preview,
+      previewVideo: manifest?.previewVideo
+    });
     showToast('你取出了小型线索木匣。');
     openInspect({
       ...CLUE_DEFINITIONS.clueBox,
@@ -621,7 +802,7 @@ function handleExitInteraction(exitDef) {
   enterScene(exitDef.toScene);
 }
 
-function handleDialogueAction(action, dialogueId, npcId) {
+function handleDialogueAction(action) {
   switch (action) {
     case 'closeDialogue':
       closeDialogue();
@@ -630,12 +811,38 @@ function handleDialogueAction(action, dialogueId, npcId) {
       closeDialogue(false);
       openHelp();
       return;
+    case 'openArchiveFromDialogue':
+      closeDialogue(false);
+      openArchive();
+      return;
+    case 'showEndingSummary':
+      closeDialogue(false);
+      showEndingPanel();
+      return;
+    case 'playEndingVideo':
+      progress.flags.add('ending_played');
+      closeDialogue(false);
+      playEndingVideoFlow();
+      return;
+    case 'replayStageEpilogue':
+      closeDialogue(false);
+      progress.flags.delete('stage_entry_prompt');
+      progress.flags.delete('stage_epilogue_opened');
+      enterScene('stage');
+      return;
+    case 'restartExperience':
+      window.location.reload();
+      return;
+    case 'returnToArchive':
+      window.location.href = '../main-site/index.html';
+      return;
     case 'replayGong':
       showToast('第七声锣再次响起，节奏明显不同于正式封相礼。');
       closeDialogue();
       return;
     case 'completeGuide':
       progress.flags.add('guide_completed');
+      progress.storyBeat = 'court_intro';
       syncSceneUnlocks(progress);
       closeDialogue(false);
       enterScene('court', STORY_TEXT.courtArrival, '封相朝堂');
@@ -667,9 +874,10 @@ function handleDialogueAction(action, dialogueId, npcId) {
     case 'accuseWithAction':
       return resolveFinalAccusation('action');
     case 'returnToPrologue':
-      progress.flags.add('ending_played');
+      progress.guideNpcDialogueState = 'ending';
+      progress.flags.add('ending_returned');
       closeDialogue(false);
-      enterScene('prologue', ['戏已散场，真相却仍在耳边回响。', '你已从戏中回到戏外。'], '终局回返');
+      enterScene('prologue', STORY_TEXT.endingReturn, '终局回返');
       return;
     case 'endExperience':
       closeDialogue();
@@ -836,7 +1044,9 @@ function resolveFinalAccusation(chainKey) {
 
   progress.endingId = evaluateEnding(progress);
   progress.flags.add('ending_unlocked');
-  progress.flags.add('ending_played');
+  progress.flags.add('final_confrontation_finished');
+  progress.flags.add('stage_return_unlocked');
+  progress.guideNpcDialogueState = 'ending';
   closeDialogue(false);
   showStoryPrompt([ENDING_DATA[progress.endingId].text], ENDING_DATA[progress.endingId].title, async () => {
     await enterScene('stage');
@@ -863,6 +1073,23 @@ function updateStoryProgress() {
   updateAllUi();
 }
 
+function showEndingPanel() {
+  progress.flags.add('ending_played');
+  const clueStats = getCollectedClueStats(progress.collectedClues);
+  const chains = getEvidenceChainState(progress);
+  const ending = ENDING_DATA[progress.endingId] ?? {
+    title: '体验完成',
+    text: '你已从戏中归来。第七声锣停止于舞台，但关于信义、权力与人心的追问仍未结束。'
+  };
+
+  dom.endingTitle.textContent = `《六国大封相：第七声锣》\n${ending.title}`;
+  dom.endingBody.textContent = `${ending.text} 你已从戏中归来。第七声锣停止于舞台，但关于信义、权力与人心的追问仍未结束。`;
+  dom.endingStats.textContent = `已收集线索：${clueStats.collectedCount} / ${clueStats.total} ｜ 关键线索：${clueStats.collectedKeyCount} / ${clueStats.keyTotal}`;
+  dom.endingChains.textContent = `声景链 ${chains.sound.owned}/${chains.sound.total} ｜ 文书链 ${chains.document.owned}/${chains.document.total} ｜ 行动链 ${chains.action.owned}/${chains.action.total}`;
+  dom.endingPanel.classList.remove('hidden');
+  setMode(GAME_MODES.ENDING, { silent: true });
+}
+
 function showToast(message) {
   dom.statusToast.textContent = message;
   dom.statusToast.classList.add('is-visible');
@@ -879,12 +1106,21 @@ function refreshDebugOverlay() {
   }
 
   const playerState = playerController.getDebugState();
+  const vrState = vrSystem.getDebugState();
   const metrics = engine.sceneMetrics;
   const focused = interactionSystem.getFocusedInteractable();
   const chains = getEvidenceChainState(progress);
-  const anchors = sceneManager.getDebugAnchors().slice(0, 6).map((anchor) => `${anchor.name}: ${anchor.position.x.toFixed(2)}, ${anchor.position.y.toFixed(2)}, ${anchor.position.z.toFixed(2)}`).join('<br />');
+  const collisionState = worldCollisionSystem.getDebugState();
+  const placementList = sceneManager.getDebugPlacements().slice(0, 8);
+  const anchors = sceneManager.getDebugAnchors();
   const loadedActors = npcSystem.spawnedNPCs?.map((item) => item.definition.displayName).join(' / ') || '无';
   const loadedProps = sceneManager.spawnedEntries?.filter((item) => item.type === 'prop').map((item) => item.definition.title).join(' / ') || '无';
+  const sceneJumpButtons = FORMAL_SCENE_IDS.map((sceneId) => {
+    const scene = ASSET_MANIFEST.scenes[sceneId];
+    return `<button type="button" class="mini-button" data-debug-scene="${sceneId}">${scene?.title ?? sceneId}</button>`;
+  }).join('');
+  const anchorButtons = anchors.slice(0, 10).map((anchor) => `<button type="button" class="mini-button" data-debug-anchor="${anchor.name}">${anchor.name}</button>`).join('');
+  const placementRows = placementList.map((item) => `${item.title}｜${item.status}｜底部 ${item.visualBottomY ?? '-'}｜锚点 ${item.anchor}`).join('<br />') || '无';
 
   dom.debugPanel.innerHTML = `
     <strong>开发调试</strong><br />
@@ -896,19 +1132,46 @@ function refreshDebugOverlay() {
     朝向：${playerState.yaw.toFixed(2)} ｜ 俯仰：${playerState.pitch.toFixed(2)}<br />
     是否落地：${playerState.grounded ? '是' : '否'} ｜ 垂直速度：${playerState.verticalVelocity.toFixed(2)}<br />
     当前动画：${playerState.currentAnimationName}<br />
+    当前视觉：${playerState.bodyMode || '未知'} ｜ 上帝模式：${playerState.godMode ? '开启' : '关闭'}<br />
     动画列表：${(playerState.animationNames || []).join(' / ') || '无'}<br />
     当前交互目标：${focused?.promptTitle ?? '无'}<br />
+    已收集线索：${[...progress.collectedClues].join(' / ') || '无'}<br />
     声景链：${chains.sound.owned}/${chains.sound.total} ｜ 文书链：${chains.document.owned}/${chains.document.total} ｜ 行动链：${chains.action.owned}/${chains.action.total}<br />
     已加载 NPC：${loadedActors}<br />
     已加载物件：${loadedProps}<br />
-    锚点：<br />${anchors || '无'}<br />
+    地面探针：${collisionState?.lastGroundReport?.reason ?? '无'} ｜ 稳定点 ${collisionState?.lastGroundReport?.stableCount ?? 0}<br />
+    WebXR 安全上下文：${vrState?.diagnostics?.isSecureContext ? '是' : '否'} ｜ navigator.xr：${vrState?.diagnostics?.hasNavigatorXR ? '有' : '无'} ｜ immersive-vr：${vrState?.diagnostics?.immersiveVrSupported ? '支持' : '不支持'}<br />
+    XR 会话：${vrState?.sessionState?.status ?? (vrState?.sessionActive ? '进行中' : '未开启')} ｜ 控制器：${vrState?.controllerCount ?? 0}<br />
+    左摇杆：${(vrState?.leftAxes || []).map((value) => Number(value).toFixed(2)).join(', ') || '无'}<br />
+    右摇杆：${(vrState?.rightAxes || []).map((value) => Number(value).toFixed(2)).join(', ') || '无'}<br />
+    物件校验：<br />${placementRows}<br />
+    <div class="debug-actions">
+      <button type="button" class="mini-button" data-debug-god>${playerState.godMode ? '关闭上帝模式' : '开启上帝模式'}</button>
+    </div>
+    <div class="debug-actions">${sceneJumpButtons}</div>
+    <div class="debug-actions">${anchorButtons || '<span>暂无锚点</span>'}</div>
     FPS：${gameState.lastFps}
   `;
   dom.debugPanel.classList.remove('hidden');
 }
 
 bindEvents();
+vrSystem.init().catch((error) => {
+  console.warn('[WebXR 初始化失败]', error);
+});
 updateAllUi();
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

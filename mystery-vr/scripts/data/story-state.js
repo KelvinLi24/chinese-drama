@@ -8,7 +8,8 @@
   INSPECT: 'inspect',
   PUZZLE: 'puzzle',
   MAP: 'map',
-  PAUSED: 'paused'
+  PAUSED: 'paused',
+  ENDING: 'ending'
 };
 
 export const STORY_TEXT = {
@@ -36,9 +37,10 @@ export const STORY_TEXT = {
     '你已拼出文书与声景的真相。',
     '带着证据回朝堂，对公孙衍发起最终对质。'
   ],
-  stageEpilogueLead: [
-    '戏台重亮，礼乐回环。',
-    '你将看见真相如何重新化作一场被众人观看的戏。'
+  endingReturn: [
+    '真相已经揭开。',
+    '你再次回到序章粤剧剧场。',
+    '去找引路使者，为这场戏收束最后一句台词。'
   ]
 };
 
@@ -66,7 +68,8 @@ export function createInitialProgress() {
       documentVerified: false
     },
     endingId: '',
-    endingPlayed: false
+    endingPlayed: false,
+    guideNpcDialogueState: 'arrival'
   };
 }
 
@@ -80,16 +83,19 @@ export function syncSceneUnlocks(progress) {
 
 export function getCurrentObjective(progress, sceneId) {
   if (sceneId === 'prologue') {
+    if (progress.guideNpcDialogueState === 'ending' || progress.flags.has('ending_returned')) {
+      return '与引路使者再谈一次，观看终章并返回现实。';
+    }
     return progress.flags.has('guide_completed')
       ? '引导已经完成，穿过帷幕进入封相朝堂。'
-      : '靠近引路伶人，确认你的身份与第一步调查目标。';
+      : '靠近引路使者，确认你的身份与第一步调查目标。';
   }
   if (sceneId === 'court') {
     if (!progress.flags.has('court_intro_seen')) return '先与公孙衍交谈，确认退盟副诏与封相礼的第一处异常。';
     if (!progress.flags.has('courtyard_unlocked')) return '调查官印、封相令牌、退盟副诏，并从诸侯反应中锁定下一处去向。';
     if (!progress.flags.has('final_court_ready')) return '院子与书房的暗线尚未查清，暂时别急着做最终对质。';
     if (!progress.flags.has('ending_unlocked')) return '证据已齐，回到封相台中央，对公孙衍发起最终指控。';
-    return '终局已开启，前往粤剧戏棚观看戏中人的最后一场演出。';
+    return '最终对质已经结束，回到序章粤剧剧场完成收束。';
   }
   if (sceneId === 'courtyard') {
     if (!progress.flags.has('courtyard_overheard')) return '先躲在合适位置偷听，不要立刻惊动回廊中的两人。';
@@ -105,7 +111,7 @@ export function getCurrentObjective(progress, sceneId) {
     return '书房证据已经成立，返回封相朝堂进行最终对质。';
   }
   if (sceneId === 'stage') {
-    return '终章已开场，靠近终章伶人，收束这场由第七声锣引出的戏中局。';
+    return '终章戏棚已解锁，可作为额外收束场景回看舞台群像。';
   }
   return '继续探索。';
 }

@@ -5,9 +5,11 @@ import {
   disposeHierarchy,
   getObjectBounds,
   normalizeToTargetHeight,
+  sampleFloorPoint,
   sharedLoader,
-  snapObjectToFloor
-} from './game-engine.js';
+  snapObjectToFloor,
+  liftVisualModelToAnchor
+} from './game-engine.js?v=20260622a';
 
 const WOOD = '#432017';
 const RED = '#6a1f1b';
@@ -32,6 +34,8 @@ export class SceneManager {
     audioSystem,
     ui,
     progress,
+    loadCoordinator,
+    worldCollisionSystem,
     onPropInteract,
     onExitInteract,
     onSceneReady
@@ -44,6 +48,8 @@ export class SceneManager {
     this.audioSystem = audioSystem;
     this.ui = ui;
     this.progress = progress;
+    this.loadCoordinator = loadCoordinator;
+    this.worldCollisionSystem = worldCollisionSystem;
     this.onPropInteract = onPropInteract;
     this.onExitInteract = onExitInteract;
     this.onSceneReady = onSceneReady;
@@ -54,7 +60,9 @@ export class SceneManager {
     this.anchorMap = new Map();
     this.debugAnchors = [];
     this.spawnedEntries = [];
+    this.placementDebug = [];
     this.sceneLoadToken = 0;
+    this.pendingFinalizeSceneId = '';
   }
 
   async loadScene(sceneId) {
@@ -64,11 +72,14 @@ export class SceneManager {
     const loadToken = ++this.sceneLoadToken;
     this.currentSceneId = sceneId;
     this.currentSceneConfig = sceneConfig;
-    this.ui.showLoading(sceneConfig.loadCopy);
+    this.pendingFinalizeSceneId = sceneId;
+    this.loadCoordinator.beginSceneLoad(sceneId, sceneConfig.title, sceneConfig.loadCopy);
+    this.#registerLoadTasks(sceneConfig);
 
     this.#clearRuntimeScene();
     this.anchorMap.clear();
     this.debugAnchors = [];
+    this.placementDebug = [];
 
     const nextGroup = new THREE.Group();
     let sceneRoot = null;
@@ -76,9 +87,7 @@ export class SceneManager {
 
     try {
       const gltf = await sharedLoader.loadAsync(sceneConfig.path, (event) => {
-        if (!event.total) return;
-        const percent = Math.round((event.loaded / event.total) * 100);
-        this.ui.showLoading(`${sceneConfig.loadCopy} ${percent}%`);
+        this.loadCoordinator.updateTaskProgress('scene-glb', event.loaded ?? 0, event.total ?? null);
       });
 
       sceneRoot = gltf.scene;
@@ -92,13 +101,18 @@ export class SceneManager {
       sceneRoot.position.z -= initial.center.z;
       sceneRoot.position.y -= initial.box.min.y - (sceneConfig.floorOffset ?? 0);
       sceneRoot.updateMatrixWorld(true);
+      this.loadCoordinator.completeTask('scene-glb');
 
       const bounds = getObjectBounds(sceneRoot);
       nextGroup.add(sceneRoot);
 
       const shell = this.#buildSceneShell(sceneConfig, bounds);
       nextGroup.add(shell.group);
+      this.loadCoordinator.completeTask('scene-shell');
+
       colliders = [...collectSceneColliders(sceneRoot), ...shell.colliders];
+      this.engine.setSceneColliders(colliders);
+      this.loadCoordinator.completeTask('scene-colliders');
 
       Object.entries(sceneConfig.layout?.anchors ?? {}).forEach(([anchorId, anchorDef]) => {
         const anchorObject = new THREE.Group();
@@ -116,8 +130,8 @@ export class SceneManager {
         nextGroup.add(marker);
         this.debugAnchors.push({ name: anchorId, object: anchorObject, marker });
       });
+      this.loadCoordinator.completeTask('scene-layout');
 
-      this.engine.setSceneColliders(colliders);
       this.engine.setSceneMetrics({
         sceneId,
         title: sceneConfig.title,
@@ -126,7 +140,10 @@ export class SceneManager {
         depth: Number(bounds.size.z.toFixed(3)),
         rootScale: sceneConfig.rootScale ?? 1,
         floorOffset: sceneConfig.floorOffset ?? 0,
-        playerStart: sceneConfig.playerStart
+        playerStart: sceneConfig.playerStart,
+        playerEyeHeight: sceneConfig.cameraHeight,
+        characterScaleMultiplier: sceneConfig.characterScaleMultiplier ?? 1,
+        propScaleMultiplier: sceneConfig.propScaleMultiplier ?? 1
       });
 
       console.log(`[场景包围盒] ${sceneConfig.title}`, {
@@ -135,36 +152,59 @@ export class SceneManager {
         depth: Number(bounds.size.z.toFixed(3)),
         rootScale: sceneConfig.rootScale ?? 1,
         floorOffset: sceneConfig.floorOffset ?? 0,
-        playerStart: sceneConfig.playerStart
+        playerStart: sceneConfig.playerStart,
+        playerEyeHeight: sceneConfig.cameraHeight,
+        characterScaleMultiplier: sceneConfig.characterScaleMultiplier ?? 1,
+        propScaleMultiplier: sceneConfig.propScaleMultiplier ?? 1
       });
     } catch (error) {
+      this.loadCoordinator.failTask('scene-glb', error);
       console.error(`[场景加载失败] ${sceneConfig.title}`, error);
-      nextGroup.add(createFallbackMarker({ label: `${sceneConfig.title} 占位`, color: '#8d2421', radius: 0.7, height: 1.6 }));
-      colliders = collectSceneColliders(nextGroup);
-      this.engine.setSceneColliders(colliders);
       this.ui.showError(`场景加载失败：${sceneConfig.title}`, `资源路径：${sceneConfig.path}`);
+      throw error;
     }
+
     this.currentGroup = nextGroup;
     this.engine.addWorldObject(nextGroup);
     this.audioSystem.setSceneAmbience(sceneConfig.ambience);
     this.ui.setCurrentScene(sceneConfig.title);
+
+    try {
+      await this.#spawnSceneEntries(sceneId, sceneConfig, loadToken);
+      await this.npcSystem.loadSceneNPCs(
+        sceneId,
+        { ...sceneConfig.layout, sceneCharacterScaleMultiplier: sceneConfig.characterScaleMultiplier ?? 1 },
+        () => loadToken === this.sceneLoadToken,
+        (npcId) => this.loadCoordinator.completeTask(`npc:${npcId}`)
+      );
+      if (loadToken !== this.sceneLoadToken) return sceneConfig;
+      this.loadCoordinator.completeTask('scene-interactions');
+      this.refreshDynamicState();
+      this.onSceneReady?.(sceneId, sceneConfig);
+      return sceneConfig;
+    } catch (error) {
+      console.error('[场景布置失败]', sceneConfig.title, error);
+      this.ui.showError(`场景布置失败：${sceneConfig.title}`, `人物、线索或互动资源未能正确初始化：${error?.message ?? String(error)}`);
+      throw error;
+    }
+  }
+
+  markPostLoadReady(taskId, detail = '') {
+    this.loadCoordinator.completeTask(taskId);
+    this.loadCoordinator.refresh(detail);
+  }
+
+  async finalizeSceneLoad(sceneId, readyCopy = '') {
+    if (sceneId !== this.pendingFinalizeSceneId) return;
+    this.loadCoordinator.completeTask('scene-first-frame');
+    const snapshot = this.loadCoordinator.getSnapshot();
+    if (!snapshot.isReady) {
+      this.loadCoordinator.refresh(readyCopy || snapshot.activeTaskLabel);
+      return;
+    }
+    this.loadCoordinator.refresh(readyCopy || `${this.currentSceneConfig?.title ?? '当前场景'}已就绪。`);
     this.ui.hideLoading();
-
-    Promise.all([
-      this.#spawnSceneEntries(sceneId, sceneConfig, loadToken),
-      this.npcSystem.loadSceneNPCs(sceneId, sceneConfig.layout, () => loadToken === this.sceneLoadToken)
-    ])
-      .then(() => {
-        if (loadToken !== this.sceneLoadToken) return;
-        this.refreshDynamicState();
-        this.onSceneReady?.(sceneId, sceneConfig);
-      })
-      .catch((error) => {
-        console.error('[scene populate failed]', sceneConfig.title, error);
-      });
-
-    if (loadToken !== this.sceneLoadToken) return sceneConfig;
-    return sceneConfig;
+    this.pendingFinalizeSceneId = '';
   }
 
   refreshDynamicState() {
@@ -190,6 +230,29 @@ export class SceneManager {
     }));
   }
 
+  getDebugPlacements() {
+    return [...this.placementDebug];
+  }
+
+  #registerLoadTasks(sceneConfig) {
+    this.loadCoordinator.registerTask({ id: 'scene-glb', label: `正在载入 ${sceneConfig.title} 场景主体……`, weight: 8, required: true, progressMode: 'bytes' });
+    this.loadCoordinator.registerTask({ id: 'scene-shell', label: '正在补齐场景环境壳体……', weight: 1, required: true });
+    this.loadCoordinator.registerTask({ id: 'scene-colliders', label: '正在初始化地面碰撞与行走区域……', weight: 1, required: true });
+    this.loadCoordinator.registerTask({ id: 'scene-layout', label: '正在建立锚点与空间布局……', weight: 1, required: true });
+
+    for (const prop of sceneConfig.layout?.props ?? []) {
+      this.loadCoordinator.registerTask({ id: `prop:${prop.id}`, label: `正在布置“${prop.title}”……`, weight: 1, required: true, progressMode: 'bytes' });
+    }
+    for (const npc of sceneConfig.layout?.npcs ?? []) {
+      this.loadCoordinator.registerTask({ id: `npc:${npc.id}`, label: `正在加载“${npc.displayName}”……`, weight: 1, required: true, progressMode: 'binary' });
+    }
+
+    this.loadCoordinator.registerTask({ id: 'scene-interactions', label: '正在注册调查、交谈与出口交互……', weight: 1, required: true });
+    this.loadCoordinator.registerTask({ id: 'player-start', label: '正在校准玩家出生点与视角……', weight: 1, required: true });
+    this.loadCoordinator.registerTask({ id: 'hud-ready', label: '正在同步目标、线索与 HUD……', weight: 1, required: true });
+    this.loadCoordinator.registerTask({ id: 'scene-first-frame', label: '正在完成场景首帧渲染……', weight: 1, required: true });
+  }
+
   #clearRuntimeScene() {
     if (this.currentSceneId) this.interactionSystem.clearScene(this.currentSceneId);
     this.npcSystem.clear();
@@ -211,40 +274,54 @@ export class SceneManager {
       if (loadToken !== this.sceneLoadToken) return;
       const manifest = this.manifest.props[propDef.propId];
       let object = null;
-      if (manifest?.path) {
-        try {
-          const gltf = await sharedLoader.loadAsync(manifest.path);
+      try {
+        if (manifest?.path) {
+          const gltf = await sharedLoader.loadAsync(manifest.path, (event) => {
+            this.loadCoordinator.updateTaskProgress(`prop:${propDef.id}`, event.loaded ?? 0, event.total ?? null);
+          });
           object = gltf.scene;
-          normalizeToTargetHeight(object, manifest.targetHeight ?? 0.28, propDef.scale ?? 1);
-        } catch (error) {
-          console.warn(`[道具加载失败] ${propDef.title}`, error);
+          normalizeToTargetHeight(
+            object,
+            (manifest.targetHeight ?? 0.28) * (sceneConfig.propHeightMultiplier ?? 1),
+            (propDef.scale ?? 1) * (sceneConfig.propScaleMultiplier ?? 1)
+          );
+          this.#prepareSceneMaterials(object);
         }
+      } catch (error) {
+        this.loadCoordinator.failTask(`prop:${propDef.id}`, error);
+        throw error;
       }
+
       if (!object) {
         object = createFallbackMarker({ label: propDef.title, color: '#d8ab63', radius: 0.14, height: 0.22 });
+        liftVisualModelToAnchor(object, { offsetY: 0.004 });
       }
 
       if (loadToken !== this.sceneLoadToken) return;
-      this.#placeObjectByDefinition(object, propDef);
-      this.engine.addWorldObject(object);
-      this.spawnedEntries.push({ type: 'prop', definition: propDef, object });
+      const anchorRoot = new THREE.Group();
+      anchorRoot.name = propDef.id;
+      anchorRoot.add(object);
+      this.#placeObjectByDefinition(anchorRoot, object, propDef);
+      this.engine.addWorldObject(anchorRoot);
+      this.spawnedEntries.push({ type: 'prop', definition: propDef, object: anchorRoot, visual: object });
+      this.loadCoordinator.completeTask(`prop:${propDef.id}`);
 
       if (propDef.interactive !== false) {
         this.interactionSystem.register({
           id: propDef.id,
           sceneId,
-          object3D: object,
+          object3D: anchorRoot,
           type: 'prop',
           displayName: propDef.title,
           promptTitle: propDef.promptTitle ?? propDef.title,
           promptSubtitle: propDef.promptSubtitle ?? manifest?.category ?? '',
           subtitle: propDef.promptSubtitle ?? manifest?.category ?? '',
           actionLabel: propDef.actionLabel ?? '调查',
-          interactionRange: propDef.interactionRadius ?? 2.2,
+          interactionRange: (propDef.interactionRadius ?? 2.2) * (sceneConfig.interactionRangeMultiplier ?? 1),
           canInteract: () => this.#checkDefinitionInteractable(propDef),
           isVisible: () => this.#isDefinitionVisible(propDef),
           focusHeight: 0.42,
-          onInteract: () => this.onPropInteract?.(propDef, manifest, object)
+          onInteract: () => this.onPropInteract?.(propDef, manifest, anchorRoot)
         });
       }
     });
@@ -253,7 +330,7 @@ export class SceneManager {
 
     for (const exitDef of sceneConfig.layout?.exits ?? []) {
       if (loadToken !== this.sceneLoadToken) return;
-      const portal = this.#createPortalMarker(exitDef);
+      const portal = this.#createPortalMarker(exitDef, sceneConfig);
       this.engine.addWorldObject(portal);
       this.spawnedEntries.push({ type: 'exit', definition: exitDef, object: portal });
       this.interactionSystem.register({
@@ -266,7 +343,7 @@ export class SceneManager {
         promptSubtitle: exitDef.promptSubtitle,
         subtitle: exitDef.promptSubtitle,
         actionLabel: exitDef.actionLabel ?? '进入',
-        interactionRange: exitDef.interactionRadius ?? 3,
+        interactionRange: (exitDef.interactionRadius ?? 3) * (sceneConfig.interactionRangeMultiplier ?? 1),
         canInteract: () => this.#checkDefinitionInteractable(exitDef),
         isVisible: () => this.#isDefinitionVisible(exitDef),
         focusHeight: 2,
@@ -374,41 +451,110 @@ export class SceneManager {
     return { group, colliders };
   }
 
-  #placeObjectByDefinition(object, definition) {
+  #placeObjectByDefinition(anchorRoot, visualRoot, definition) {
     const anchorObject = definition.anchor ? this.anchorMap.get(definition.anchor) : null;
-    if (anchorObject) {
-      object.position.copy(anchorObject.getWorldPosition(new THREE.Vector3()));
-    } else if (definition.position) {
-      object.position.set(...definition.position);
+    const anchorPosition = anchorObject
+      ? anchorObject.getWorldPosition(new THREE.Vector3())
+      : definition.position
+        ? new THREE.Vector3(...definition.position)
+        : new THREE.Vector3();
+
+    anchorRoot.position.copy(anchorPosition);
+    if (definition.positionOffset) {
+      anchorRoot.position.add(new THREE.Vector3(...definition.positionOffset));
     }
 
-    if (definition.rotation) object.rotation.set(...definition.rotation);
-    if (typeof definition.rotationY === 'number') object.rotation.y = definition.rotationY;
+    visualRoot.position.set(0, 0, 0);
+    if (definition.rotation) visualRoot.rotation.set(...definition.rotation);
+    if (typeof definition.rotationY === 'number') anchorRoot.rotation.y = definition.rotationY;
 
-    if (definition.placement === 'floor') {
-      snapObjectToFloor(object, {
-        sceneColliders: this.engine.sceneColliders,
-        offsetY: 0.012,
-        rayStartHeight: 14,
-        maxRise: 1.4,
-        maxDrop: 14,
-        prefer: 'highest'
+    let surfaceY = anchorRoot.position.y;
+    const placementMode = definition.placement ?? 'floor';
+    const validation = {
+      id: definition.id,
+      title: definition.title,
+      placement: placementMode,
+      anchor: definition.anchor ?? '直接坐标',
+      anchorY: Number(anchorRoot.position.y.toFixed(3)),
+      floorY: null,
+      surfaceY: null,
+      visualBottomY: null,
+      status: 'unknown'
+    };
+
+    if (placementMode === 'floor') {
+      const floorPlacement = this.worldCollisionSystem?.resolveFloorPropPlacement(anchorRoot.position.x, anchorRoot.position.z, {
+        referenceY: anchorRoot.position.y,
+        clearance: definition.floorClearance ?? 0.008
       });
+      if (!floorPlacement) {
+        console.error(`[物件贴地失败] ${definition.title} 未找到合法地面`, definition);
+        validation.status = 'missing-floor';
+      } else {
+        anchorRoot.position.set(floorPlacement.x, floorPlacement.floorY, floorPlacement.z);
+        surfaceY = floorPlacement.floorY;
+        validation.floorY = Number(floorPlacement.floorY.toFixed(3));
+      }
     }
 
-    if (definition.placement === 'surface') {
-      object.position.y += 0.02;
+    if (placementMode === 'surface') {
+      surfaceY = anchorObject ? anchorPosition.y : anchorRoot.position.y;
+      anchorRoot.position.y = surfaceY;
+      validation.surfaceY = Number(surfaceY.toFixed(3));
     }
 
-    if (definition.placement === 'hover') {
-      object.position.y += 0.22;
+    if (placementMode === 'hover') {
+      const floorPlacement = this.worldCollisionSystem?.resolveFloorPropPlacement(anchorRoot.position.x, anchorRoot.position.z, {
+        referenceY: anchorRoot.position.y,
+        clearance: 0
+      });
+      if (floorPlacement) {
+        surfaceY = floorPlacement.floorY + (definition.hoverClearance ?? 0.22);
+        anchorRoot.position.y = surfaceY;
+        validation.floorY = Number(floorPlacement.floorY.toFixed(3));
+      } else {
+        anchorRoot.position.y += definition.hoverClearance ?? 0.22;
+        surfaceY = anchorRoot.position.y;
+      }
     }
+
+        const clearance = placementMode === 'surface'
+      ? (definition.surfaceClearance ?? 0.012)
+      : placementMode === 'floor'
+        ? (definition.floorClearance ?? 0.008)
+        : 0;
+
+    const anchorYBeforeMeasure = anchorRoot.position.y;
+    anchorRoot.position.y = 0;
+    visualRoot.updateMatrixWorld(true);
+    const bounds = getObjectBounds(visualRoot);
+    const bottomOffset = -bounds.box.min.y + clearance;
+    anchorRoot.position.y = anchorYBeforeMeasure;
+    visualRoot.position.y += bottomOffset;
+    visualRoot.updateMatrixWorld(true);
+
+    const finalBounds = getObjectBounds(visualRoot);
+    const visualBottomY = anchorRoot.position.y + finalBounds.box.min.y;
+    validation.visualBottomY = Number(visualBottomY.toFixed(3));
+
+    if (placementMode === 'floor') {
+      const delta = Math.abs(visualBottomY - surfaceY);
+      validation.status = delta <= 0.03 ? 'ok-floor' : visualBottomY < surfaceY ? 'buried' : 'floating';
+    } else if (placementMode === 'surface') {
+      const expected = surfaceY + clearance;
+      const delta = Math.abs(visualBottomY - expected);
+      validation.status = delta <= 0.03 ? 'ok-surface' : visualBottomY < expected ? 'buried' : 'floating';
+    } else {
+      validation.status = 'ok-hover';
+    }
+
+    this.placementDebug.push(validation);
   }
 
-  #createPortalMarker(exitDef) {
+  #createPortalMarker(exitDef, sceneConfig) {
     const portal = new THREE.Group();
     const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.72, 0.05, 16, 42),
+      new THREE.TorusGeometry(0.72, 0.05, 18, 48),
       new THREE.MeshStandardMaterial({
         color: '#b98a4b',
         roughness: 0.42,
@@ -416,19 +562,66 @@ export class SceneManager {
         emissive: new THREE.Color('#7b3b18').multiplyScalar(0.24)
       })
     );
-    ring.rotation.x = Math.PI / 2;
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.5, 18), createMaterial(RED, 0.72, 0.08, 0.12));
-    pillar.position.y = 0.75;
-    portal.add(ring, pillar);
-    portal.position.set(...exitDef.position);
+    ring.position.y = 1.02;
+
+    const glow = new THREE.Mesh(
+      new THREE.CircleGeometry(0.52, 42),
+      new THREE.MeshBasicMaterial({ color: '#f4d39b', transparent: true, opacity: 0.18, side: THREE.DoubleSide })
+    );
+    glow.position.y = 1.02;
+
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.11, 0.42, 18),
+      createMaterial(RED, 0.72, 0.08, 0.12)
+    );
+    post.position.y = 0.22;
+
+    portal.add(ring, glow, post);
+    const bounds = getObjectBounds(portal);
+    const lift = -bounds.box.min.y + 0.01;
+    portal.children.forEach((child) => {
+      child.position.y += lift;
+    });
+
+    const anchorObject = exitDef.anchor ? this.anchorMap.get(exitDef.anchor) : null;
+    const anchorPosition = anchorObject
+      ? anchorObject.getWorldPosition(new THREE.Vector3())
+      : exitDef.position
+        ? new THREE.Vector3(...exitDef.position)
+        : new THREE.Vector3();
+    portal.position.copy(anchorPosition);
+    if (exitDef.positionOffset) {
+      portal.position.add(new THREE.Vector3(...exitDef.positionOffset));
+    }
+
+    const floorPlacement = this.worldCollisionSystem?.resolveFloorPropPlacement(portal.position.x, portal.position.z, {
+      referenceY: portal.position.y,
+      clearance: 0
+    });
+    if (floorPlacement) portal.position.y = floorPlacement.floorY;
     portal.rotation.y = exitDef.rotationY ?? 0;
+    portal.scale.setScalar((exitDef.portalScale ?? 1) * (sceneConfig.portalScaleMultiplier ?? 1));
+
+    this.placementDebug.push({
+      id: exitDef.id,
+      title: exitDef.displayName,
+      placement: 'portal',
+      anchor: exitDef.anchor ?? '直接坐标',
+      anchorY: Number(portal.position.y.toFixed(3)),
+      floorY: floorPlacement ? Number(floorPlacement.floorY.toFixed(3)) : null,
+      surfaceY: null,
+      visualBottomY: Number(portal.position.y.toFixed(3)),
+      status: floorPlacement ? 'ok-portal' : 'missing-floor'
+    });
     return portal;
   }
 
   #checkDefinitionInteractable(definition) {
     const requiredFlags = definition.requiredFlags ?? [];
     const missingFlag = requiredFlags.find((flag) => !this.progress.flags.has(flag));
-    if (missingFlag) return { ok: false, reason: '该线索尚未满足调查条件' };
+    if (missingFlag) {
+      return { ok: false, reason: definition.toScene ? '当前剧情尚未解锁此入口' : '该线索尚未满足调查条件' };
+    }
 
     if (definition.collectable && definition.clueId && this.progress.collectedClues.has(definition.clueId)) {
       return { ok: false, reason: '该线索已调查' };
@@ -439,6 +632,8 @@ export class SceneManager {
 
   #isDefinitionVisible(definition) {
     const hiddenUntilFlags = definition.hiddenUntilFlags ?? [];
+    const hideWhenFlags = definition.hideWhenFlags ?? [];
+    if (hideWhenFlags.some((flag) => this.progress.flags.has(flag))) return false;
     if (!hiddenUntilFlags.length) return true;
     return hiddenUntilFlags.every((flag) => this.progress.flags.has(flag));
   }
