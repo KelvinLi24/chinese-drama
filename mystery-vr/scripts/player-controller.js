@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { scaleVisualRootWithLift } from './game-engine.js';
 import { createCharacterActor } from './npc-system.js';
 import { MODEL_CALIBRATION } from './data/model-calibration.js';
@@ -45,6 +45,7 @@ export class PlayerController {
     this.godFlySpeed = 5.6;
     this.actualVelocity = 0;
     this.godModeLiftApplied = false;
+    this.xrActive = false;
 
     this.playerRoot = new THREE.Group();
     this.engine.addWorldObject(this.playerRoot);
@@ -112,7 +113,7 @@ export class PlayerController {
     };
 
     this.onMouseMove = (event) => {
-      if (this.engine.renderer.xr.isPresenting || this.movementLocked) return;
+      if (this.xrActive || this.engine.renderer.xr.isPresenting || this.movementLocked) return;
       if (document.pointerLockElement !== this.engine.canvas) return;
 
       if (this.viewMode === 'firstPerson' || this.godMode) {
@@ -129,7 +130,7 @@ export class PlayerController {
     };
 
     this.onCanvasClick = () => {
-      if (this.engine.renderer.xr.isPresenting) return;
+      if (this.xrActive || this.engine.renderer.xr.isPresenting) return;
       if (this.canCapturePointer && !this.canCapturePointer()) return;
       if (document.pointerLockElement !== this.engine.canvas) {
         void this.requestPointerLock();
@@ -174,11 +175,21 @@ export class PlayerController {
     if (!this.godMode) {
       this.godModeLiftApplied = false;
       this.verticalVelocity = 0;
-      this._snapToGround(true);
+      if (this.xrActive) {
+        const spawn = this.getSafeSpawnPosition();
+        this.engine.xrLocomotionRig.position.copy(spawn);
+        this._syncPlayerRootFromXrRig();
+      } else {
+        this._snapToGround(true);
+      }
       this.showNotice('已关闭上帝模式，玩家已贴回合法地面。');
     } else {
       if (!this.godModeLiftApplied) {
-        this.playerRoot.position.y += 4.2;
+        if (this.xrActive) {
+          this.engine.xrLocomotionRig.position.y += 4.2;
+        } else {
+          this.playerRoot.position.y += 4.2;
+        }
         this.godModeLiftApplied = true;
       }
       this.verticalVelocity = 0;
@@ -189,7 +200,7 @@ export class PlayerController {
   }
 
   requestPointerLock() {
-    if (this.engine.renderer.xr.isPresenting) return Promise.resolve(false);
+    if (this.xrActive || this.engine.renderer.xr.isPresenting) return Promise.resolve(false);
     if (this.canCapturePointer && !this.canCapturePointer()) return Promise.resolve(false);
     if (document.pointerLockElement === this.engine.canvas) return Promise.resolve(true);
     if (!this.engine.canvas.requestPointerLock) return Promise.resolve(false);
@@ -217,10 +228,26 @@ export class PlayerController {
     if (document.pointerLockElement === this.engine.canvas && document.exitPointerLock) document.exitPointerLock();
   }
 
+  getSafeSpawnPosition() {
+    const start = this.sceneConfig?.playerStart ?? [0, 0, 4];
+    const spawn = new THREE.Vector3(start[0], start[1], start[2]);
+    const floor = this.worldCollisionSystem?.queryGround(spawn, {
+      referenceY: spawn.y,
+      maxRise: this.settings.spawnSnapRise ?? 2.6,
+      maxDrop: 18,
+      rayStartHeight: 20
+    });
+    if (floor) {
+      spawn.y = floor.y;
+      this.floorPoint.copy(floor.point);
+      this.currentGroundY = floor.y;
+    }
+    return spawn;
+  }
+
   resetToSpawn() {
-    const start = this.sceneConfig && this.sceneConfig.playerStart ? this.sceneConfig.playerStart : [0, 0, 4];
+    const spawn = this.getSafeSpawnPosition();
     const facing = this.sceneConfig && typeof this.sceneConfig.playerRotationY === 'number' ? this.sceneConfig.playerRotationY : Math.PI;
-    this.playerRoot.position.set(start[0], start[1], start[2]);
     this.yaw = facing;
     this.cameraYaw = facing;
     this.pitch = -0.06;
@@ -229,24 +256,52 @@ export class PlayerController {
     this.isGrounded = true;
     this.jumpUpgraded = false;
     this.lastMovementDirection.set(0, 0, 0);
-    this._snapToGround(true);
-    this.lastSafePosition.copy(this.playerRoot.position);
+
+    if (this.xrActive) {
+      this.engine.xrLocomotionRig.position.copy(spawn);
+      this.engine.xrLocomotionRig.rotation.set(0, facing, 0);
+      this.engine.attachCameraToXrRig();
+      this._syncPlayerRootFromXrRig();
+    } else {
+      this.playerRoot.position.copy(spawn);
+      this._snapToGround(true);
+      this.lastSafePosition.copy(this.playerRoot.position);
+    }
+
     this._updateCamera(true);
   }
 
   teleportTo(position, { snapToGround = true } = {}) {
     if (!position) return;
-    this.playerRoot.position.copy(position);
-    if (snapToGround && !this.godMode) {
-      this._snapToGround(true);
-      this.lastSafePosition.copy(this.playerRoot.position);
+    if (this.xrActive) {
+      this.engine.xrLocomotionRig.position.copy(position);
+      if (snapToGround && !this.godMode) {
+        const floor = this.worldCollisionSystem?.queryGround(this.engine.xrLocomotionRig.position, {
+          referenceY: this.engine.xrLocomotionRig.position.y,
+          maxRise: this.settings.spawnSnapRise ?? 2.6,
+          maxDrop: 18,
+          rayStartHeight: 20
+        });
+        if (floor) {
+          this.engine.xrLocomotionRig.position.y = floor.y;
+          this.floorPoint.copy(floor.point);
+          this.currentGroundY = floor.y;
+        }
+      }
+      this._syncPlayerRootFromXrRig();
+    } else {
+      this.playerRoot.position.copy(position);
+      if (snapToGround && !this.godMode) {
+        this._snapToGround(true);
+        this.lastSafePosition.copy(this.playerRoot.position);
+      }
     }
     this.verticalVelocity = 0;
     this._updateCamera(true);
   }
 
   toggleViewMode() {
-    if (this.engine.renderer.xr.isPresenting) return;
+    if (this.xrActive || this.engine.renderer.xr.isPresenting) return;
     this.viewMode = this.viewMode === 'firstPerson' ? 'thirdPerson' : 'firstPerson';
     if (this.viewMode === 'thirdPerson') {
       this.cameraYaw = this.yaw;
@@ -262,13 +317,46 @@ export class PlayerController {
     this._updateCamera(true);
   }
 
-  setXRMode(active) {
-    if (active) this.viewMode = 'firstPerson';
+  setXRMode(active, options = {}) {
+    if (active) {
+      this.enterXRMode(options);
+    } else {
+      this.exitXRMode();
+    }
+  }
+
+  enterXRMode({ spawn = null } = {}) {
+    this.xrActive = true;
+    this.viewMode = 'firstPerson';
+    this.releasePointerLock();
+    this.engine.attachCameraToXrRig();
+    this.engine.camera.position.set(0, 0, 0);
+    this.engine.camera.rotation.set(0, 0, 0);
+    const nextSpawn = spawn?.clone?.() ?? this.getSafeSpawnPosition();
+    this.engine.xrLocomotionRig.position.copy(nextSpawn);
+    this.engine.xrLocomotionRig.rotation.set(0, this.yaw, 0);
+    this.verticalVelocity = 0;
+    this.isGrounded = true;
+    this._syncPlayerRootFromXrRig();
+    this._updateVisibleBody();
+    this._updateCamera(true);
+  }
+
+  exitXRMode() {
+    this.xrActive = false;
+    this.engine.attachCameraToScene();
+    this.playerRoot.position.copy(this.engine.xrLocomotionRig.position);
+    this.playerRoot.rotation.copy(this.engine.xrLocomotionRig.rotation);
+    this.lastSafePosition.copy(this.playerRoot.position);
     this._updateVisibleBody();
     this._updateCamera(true);
   }
 
   moveByWorldVector(vector) {
+    if (this.xrActive) {
+      this.moveXrRigByWorldVector(vector);
+      return;
+    }
     if (!vector || typeof vector.lengthSq !== 'function' || !vector.lengthSq()) return;
     const previous = this.playerRoot.position.clone();
 
@@ -298,9 +386,55 @@ export class PlayerController {
     this.actualVelocity = movedDistance / Math.max(1 / 60, 0.0001);
   }
 
-  update(delta) {
-    if (this.engine.renderer.xr.isPresenting) return;
+  moveXrRigByWorldVector(vector) {
+    if (!vector || typeof vector.lengthSq !== 'function' || !vector.lengthSq()) return;
+    const rig = this.engine.xrLocomotionRig;
+    const previous = rig.position.clone();
 
+    if (this.godMode) {
+      rig.position.add(vector);
+      this.actualVelocity = rig.position.clone().sub(previous).length();
+      this._syncPlayerRootFromXrRig({ updateSafePosition: false });
+      return;
+    }
+
+    const groundedVector = new THREE.Vector3(vector.x, 0, vector.z);
+    if (this.worldCollisionSystem) {
+      const resolved = this.worldCollisionSystem.resolveGroundedMovement({
+        currentPosition: previous,
+        desiredPosition: previous.clone().add(groundedVector),
+        lastSafePosition: this.lastSafePosition
+      });
+      rig.position.copy(resolved.position);
+      if (!resolved.blocked) {
+        this.currentGroundY = resolved.groundY ?? rig.position.y;
+        this.lastSafePosition.copy(rig.position);
+      }
+    } else {
+      rig.position.add(groundedVector);
+    }
+
+    this.actualVelocity = rig.position.clone().sub(previous).length() / Math.max(1 / 60, 0.0001);
+    this._syncPlayerRootFromXrRig();
+  }
+
+  rotateXrRigByRadians(angle) {
+    if (!this.xrActive || !Number.isFinite(angle) || Math.abs(angle) <= 0.0001) return;
+    this.engine.xrLocomotionRig.rotateY(angle);
+    this.yaw = this.engine.xrLocomotionRig.rotation.y;
+    this.cameraYaw = this.yaw;
+    this._syncPlayerRootFromXrRig({ updateSafePosition: false });
+  }
+
+  update(delta) {
+    if (this.xrActive || this.engine.renderer.xr.isPresenting) {
+      this.updateXR(delta);
+      return;
+    }
+    this.updateDesktop(delta);
+  }
+
+  updateDesktop(delta) {
     if (this.godMode) {
       this._updateGodMode(delta);
       return;
@@ -338,12 +472,10 @@ export class PlayerController {
         this.playerRoot.position.add(desiredStep);
         this.worldCollisionSystem?.clampToWalkArea(this.playerRoot.position);
       }
+    } else if (this.viewMode === 'firstPerson') {
+      this.yaw = this.cameraYaw;
     } else {
-      if (this.viewMode === 'firstPerson') {
-        this.yaw = this.cameraYaw;
-      } else {
-        this.cameraYaw = this.yaw;
-      }
+      this.cameraYaw = this.yaw;
     }
 
     this._updateVerticalMotion(delta);
@@ -360,9 +492,48 @@ export class PlayerController {
     this._updateCamera();
   }
 
+  updateXR() {
+    if (this.godMode) {
+      this._syncPlayerRootFromXrRig({ updateSafePosition: false });
+      this._updateVisibleBody();
+      return;
+    }
+
+    const rig = this.engine.xrLocomotionRig;
+    const floor = this.worldCollisionSystem?.queryGround(rig.position, {
+      referenceY: rig.position.y,
+      maxRise: this.settings.maxStepHeight ?? 0.28,
+      maxDrop: 18,
+      rayStartHeight: 20
+    });
+
+    if (floor) {
+      rig.position.y = floor.y;
+      this.currentGroundY = floor.y;
+      this.floorPoint.copy(floor.point);
+      this.lastSafePosition.copy(rig.position);
+    }
+
+    this.isGrounded = true;
+    this.verticalVelocity = 0;
+    this._syncPlayerRootFromXrRig();
+    this._updateActorState({ moving: this.actualVelocity > 0.05, running: false });
+    this._updateVisibleBody();
+    this._updateCamera();
+  }
+
+  _syncPlayerRootFromXrRig({ updateSafePosition = true } = {}) {
+    this.playerRoot.position.copy(this.engine.xrLocomotionRig.position);
+    this.playerRoot.rotation.copy(this.engine.xrLocomotionRig.rotation);
+    this.yaw = this.engine.xrLocomotionRig.rotation.y;
+    this.cameraYaw = this.yaw;
+    if (updateSafePosition) this.lastSafePosition.copy(this.playerRoot.position);
+  }
+
   _updateGodMode(delta) {
     const move = new THREE.Vector3();
-    const forward = projectToGround(this.engine.camera.getWorldDirection(new THREE.Vector3()));
+    const cameraForDirection = this.xrActive ? this.engine.getActiveXrCamera() : this.engine.camera;
+    const forward = projectToGround(cameraForDirection.getWorldDirection(new THREE.Vector3()));
     if (!forward.lengthSq()) forward.set(Math.sin(this.cameraYaw), 0, Math.cos(this.cameraYaw)).normalize();
     const right = new THREE.Vector3().crossVectors(UP, forward).normalize();
     if (this.keys.has('KeyW')) move.add(forward);
@@ -372,13 +543,16 @@ export class PlayerController {
     if (this.keys.has('Space')) move.y += 1;
     if (this.keys.has('KeyC')) move.y -= 1;
     const speed = (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight')) ? this.godFlySpeed * 1.85 : this.godFlySpeed;
+    const targetRoot = this.xrActive ? this.engine.xrLocomotionRig : this.playerRoot;
     if (!this.movementLocked && move.lengthSq() > 0) {
       move.normalize().multiplyScalar(speed * delta);
-      this.playerRoot.position.add(move);
+      targetRoot.position.add(move);
       this.actualVelocity = move.length() / Math.max(delta, 0.0001);
     } else {
       this.actualVelocity = 0;
-    this.godModeLiftApplied = false;
+    }
+    if (this.xrActive) {
+      this._syncPlayerRootFromXrRig({ updateSafePosition: false });
     }
     this._updateActorState({ moving: this.actualVelocity > 0.04, running: this.actualVelocity > this.godFlySpeed });
     this._updateVisibleBody();
@@ -417,7 +591,7 @@ export class PlayerController {
   }
 
   _handleJumpPress() {
-    if (this.movementLocked || this.engine.renderer.xr.isPresenting || this.godMode) return;
+    if (this.movementLocked || this.xrActive || this.engine.renderer.xr.isPresenting || this.godMode) return;
     const now = performance.now();
 
     if (this.isGrounded) {
@@ -579,7 +753,7 @@ export class PlayerController {
   }
 
   _updateVisibleBody() {
-    const showBody = this.viewMode === 'thirdPerson' && !this.engine.renderer.xr.isPresenting && !this.godMode;
+    const showBody = this.viewMode === 'thirdPerson' && !this.xrActive && !this.engine.renderer.xr.isPresenting && !this.godMode;
     if (!showBody) {
       if (this.idleActor?.root) this.idleActor.root.visible = false;
       if (this.walkActor?.root) this.walkActor.root.visible = false;
@@ -592,6 +766,13 @@ export class PlayerController {
   }
 
   _updateCamera(forceSnap = false) {
+    if (this.xrActive || this.engine.renderer.xr.isPresenting) {
+      this.engine.attachCameraToXrRig();
+      this.engine.camera.position.set(0, 0, 0);
+      this.engine.camera.rotation.set(0, 0, 0);
+      return;
+    }
+
     const eye = this.playerRoot.position.clone().add(new THREE.Vector3(0, this.eyeHeight, 0));
 
     if (this.godMode) {
@@ -606,7 +787,7 @@ export class PlayerController {
       return;
     }
 
-    if (this.viewMode === 'firstPerson' || this.engine.renderer.xr.isPresenting) {
+    if (this.viewMode === 'firstPerson') {
       const forward = new THREE.Vector3(
         Math.sin(this.cameraYaw) * Math.cos(this.pitch),
         Math.sin(this.pitch),
@@ -643,10 +824,16 @@ export class PlayerController {
   }
 
   getEyePosition() {
+    if (this.xrActive || this.engine.renderer.xr.isPresenting) {
+      return this.engine.getActiveXrCamera().getWorldPosition(new THREE.Vector3());
+    }
     return this.playerRoot.position.clone().add(new THREE.Vector3(0, this.eyeHeight, 0));
   }
 
   getForwardVector() {
+    if (this.xrActive || this.engine.renderer.xr.isPresenting) {
+      return projectToGround(this.engine.getActiveXrCamera().getWorldDirection(new THREE.Vector3()));
+    }
     if (this.viewMode === 'firstPerson' || this.godMode) {
       return projectToGround(this.engine.camera.getWorldDirection(new THREE.Vector3()));
     }
@@ -654,9 +841,14 @@ export class PlayerController {
   }
 
   getDebugState() {
+    const xrCameraPosition = (this.xrActive || this.engine.renderer.xr.isPresenting)
+      ? this.engine.getActiveXrCamera().getWorldPosition(new THREE.Vector3())
+      : this.engine.camera.position.clone();
     return {
       player: this.playerRoot.position.clone(),
       camera: this.engine.camera.position.clone(),
+      xrCamera: xrCameraPosition,
+      xrRig: this.engine.xrLocomotionRig.position.clone(),
       yaw: this.yaw,
       pitch: this.pitch,
       cameraYaw: this.cameraYaw,
@@ -672,7 +864,8 @@ export class PlayerController {
       animationNames: this.walkActor && this.walkActor.animationNames ? this.walkActor.animationNames : [],
       actualVelocity: this.actualVelocity,
       lastSafePosition: this.lastSafePosition.clone(),
-      godMode: this.godMode
+      godMode: this.godMode,
+      xrActive: this.xrActive
     };
   }
 
@@ -686,8 +879,3 @@ export class PlayerController {
     }, duration);
   }
 }
-
-
-
-
-

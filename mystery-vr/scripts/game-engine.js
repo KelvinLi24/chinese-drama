@@ -1,4 +1,4 @@
-﻿import * as THREE from "three";
+import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 export const sharedLoader = new GLTFLoader();
@@ -300,6 +300,10 @@ export class GameEngine {
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 220);
     this.camera.position.set(0, 1.7, 5.5);
 
+    this.xrHudRoot = new THREE.Group();
+    this.xrHudRoot.name = 'xr-hud-root';
+    this.camera.add(this.xrHudRoot);
+
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
@@ -315,6 +319,12 @@ export class GameEngine {
 
     this.worldRoot = new THREE.Group();
     this.scene.add(this.worldRoot);
+
+    this.xrLocomotionRig = new THREE.Group();
+    this.xrLocomotionRig.name = 'xr-locomotion-rig';
+    this.scene.add(this.xrLocomotionRig);
+
+    this.scene.add(this.camera);
 
     this.uiRoot = new THREE.Group();
     this.scene.add(this.uiRoot);
@@ -420,6 +430,20 @@ export class GameEngine {
 
   recordRaycast(count = 1) {
     recordRaycast(count);
+  }
+
+  attachCameraToXrRig() {
+    this.xrLocomotionRig.add(this.camera);
+    this.camera.position.set(0, 0, 0);
+    this.camera.rotation.set(0, 0, 0);
+  }
+
+  attachCameraToScene() {
+    this.scene.add(this.camera);
+  }
+
+  getActiveXrCamera() {
+    return this.renderer.xr.getCamera(this.camera);
   }
 
   start(renderHook) {

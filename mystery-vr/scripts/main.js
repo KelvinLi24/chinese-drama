@@ -104,6 +104,8 @@ const gameState = {
   currentVideoFlow: ''
 };
 
+let runtimeStarted = false;
+
 const engine = new GameEngine({ canvas: dom.canvas });
 const audioSystem = new AudioSystem({ toastTarget: dom.audioToast });
 const inventorySystem = new InventorySystem({
@@ -154,7 +156,8 @@ const vrSystem = new VRControllerSystem({
   supportLabels: [dom.xrSupportLabel, dom.xrHudSupportLabel, dom.xrPauseSupportLabel],
   getMode: () => gameState.mode,
   getObjective: () => getCurrentObjective(progress, progress.currentSceneId || 'prologue'),
-  getFocusedInteractable: () => interactionSystem.getFocusedInteractable()
+  getFocusedInteractable: () => interactionSystem.getFocusedInteractable(),
+  ensureRuntimeStarted
 });
 
 function createUiHelpers() {
@@ -296,6 +299,35 @@ function updateAllUi() {
   sceneManager.refreshDynamicState();
 }
 
+function updateRuntimeFrame(delta) {
+  gameState.lastFps = Math.round(1 / Math.max(delta, 0.0001));
+  playerController.setMovementLocked(gameState.mode !== GAME_MODES.EXPLORE);
+  playerController.update(delta);
+  npcSystem.update(playerController.getPosition(), delta);
+  if (!engine.renderer.xr.isPresenting) {
+    interactionSystem.updateDesktopFocus({
+      camera: engine.camera,
+      playerPosition: playerController.getPosition(),
+      mode: gameState.mode,
+      canvasRect: dom.canvas.getBoundingClientRect()
+    });
+  }
+  vrSystem.update(delta, gameState.mode, playerController.getPosition());
+  refreshDebugOverlay();
+}
+
+async function ensureRuntimeStarted() {
+  if (runtimeStarted) return;
+  runtimeStarted = true;
+  try {
+    await playerController.init();
+    engine.start(updateRuntimeFrame);
+  } catch (error) {
+    runtimeStarted = false;
+    throw error;
+  }
+}
+
 async function startGame() {
   if (gameState.mode === GAME_MODES.LOADING || gameState.mode === GAME_MODES.VIDEO) return;
   dom.startButton?.setAttribute('disabled', 'disabled');
@@ -310,21 +342,7 @@ async function startGame() {
   try {
     if (!gameState.hasStarted) {
       gameState.hasStarted = true;
-      await playerController.init();
-      engine.start((delta) => {
-        gameState.lastFps = Math.round(1 / Math.max(delta, 0.0001));
-        playerController.setMovementLocked(gameState.mode !== GAME_MODES.EXPLORE);
-        playerController.update(delta);
-        npcSystem.update(playerController.getPosition(), delta);
-        interactionSystem.updateDesktopFocus({
-          camera: engine.camera,
-          playerPosition: playerController.getPosition(),
-          mode: gameState.mode,
-          canvasRect: dom.canvas.getBoundingClientRect()
-        });
-        vrSystem.update(delta, gameState.mode, playerController.getPosition());
-        refreshDebugOverlay();
-      });
+      await ensureRuntimeStarted();
     }
 
     audioSystem.unlock();
@@ -433,6 +451,7 @@ async function enterScene(sceneId, promptLines = null, promptTitle = '') {
   try {
     setMode(GAME_MODES.LOADING, { silent: true });
     gameState.failedSceneId = sceneId;
+    vrSystem.onSceneLoadStart?.(sceneId);
     const sceneConfig = await sceneManager.loadScene(sceneId);
     progress.currentSceneId = sceneId;
     playerController.setScene(sceneConfig);
@@ -441,7 +460,8 @@ async function enterScene(sceneId, promptLines = null, promptTitle = '') {
     sceneManager.markPostLoadReady('hud-ready', `正在同步 ${sceneConfig.title} 的任务与线索……`);
     await waitForNextFrame();
     await sceneManager.finalizeSceneLoad(sceneId, `${sceneConfig.title}已就绪。`);
-    gameState.failedSceneId = '';
+    await vrSystem.onSceneReady?.(sceneId);
+    gameState.failedSceneId = ''; 
     handleSceneArrival(sceneId, sceneConfig, promptLines, promptTitle);
   } catch (error) {
     console.error('[场景切换失败]', sceneId, error);

@@ -1,6 +1,14 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
+import { waitForNextFrame } from './game-engine.js';
 import { beginImmersiveVRFromUserGesture, getXrSessionState } from './systems/xr-session-manager.js';
-import { canEnterImmersiveVr, formatWebXrSupportMessage, getWebXrDiagnostics } from './systems/webxr-diagnostics.js';
+import { XRLoadingRoom } from './systems/xr-loading-room.js';
+import {
+  canEnterImmersiveVr,
+  formatWebXrSupportMessage,
+  getWebXrDiagnostics,
+  summarizeXrRuntimeState,
+  validateXrViewAgainstSceneBounds
+} from './systems/webxr-diagnostics.js';
 
 const DEADZONE = 0.18;
 const SNAP_TURN_ANGLE = Math.PI / 6;
@@ -12,7 +20,17 @@ function applyDeadzone(value, threshold = DEADZONE) {
 }
 
 export class VRControllerSystem {
-  constructor({ engine, interactionSystem, playerController, buttonHosts = [], supportLabels = [], getMode, getObjective = () => '', getFocusedInteractable = () => null }) {
+  constructor({
+    engine,
+    interactionSystem,
+    playerController,
+    buttonHosts = [],
+    supportLabels = [],
+    getMode,
+    getObjective = () => '',
+    getFocusedInteractable = () => null,
+    ensureRuntimeStarted = async () => {}
+  }) {
     this.engine = engine;
     this.interactionSystem = interactionSystem;
     this.playerController = playerController;
@@ -21,6 +39,7 @@ export class VRControllerSystem {
     this.getMode = getMode;
     this.getObjective = getObjective;
     this.getFocusedInteractable = getFocusedInteractable;
+    this.ensureRuntimeStarted = ensureRuntimeStarted;
     this.controllers = [];
     this.turnCooldown = 0;
     this.supported = false;
@@ -30,8 +49,19 @@ export class VRControllerSystem {
     this.xrHud = null;
     this.xrHudCanvas = null;
     this.xrHudTexture = null;
+    this.xrLoadingRoom = null;
     this.lastPrompt = '';
     this.lastObjective = '';
+    this.lastValidation = null;
+    this.validationCooldown = 0;
+    this.xrRuntimeState = {
+      sessionActive: false,
+      renderLoopReady: false,
+      xrLoadingRoomVisible: false,
+      currentSceneReady: false,
+      xrRigReady: false,
+      hudReady: false
+    };
   }
 
   async init() {
@@ -40,9 +70,11 @@ export class VRControllerSystem {
     this.#broadcastSupport(formatWebXrSupportMessage(this.diagnostics));
     this.#createButtons(this.supported);
 
+    this.xrLoadingRoom = new XRLoadingRoom({ engine: this.engine });
+    this.#setupXRHud();
+
     if (!this.supported) return;
     this.#setupControllers();
-    this.#setupXRHud();
   }
 
   #broadcastSupport(message) {
@@ -67,7 +99,7 @@ export class VRControllerSystem {
           if (this.sessionActive) {
             this.exitVR();
           } else {
-            this.enterVR();
+            void this.enterVR();
           }
         });
       }
@@ -108,12 +140,14 @@ export class VRControllerSystem {
 
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
     const panel = new THREE.Mesh(new THREE.PlaneGeometry(1.28, 0.64), material);
+    panel.position.set(0, -0.1, -XR_PROMPT_DISTANCE);
     panel.visible = false;
 
     this.xrHud = panel;
     this.xrHudCanvas = canvas;
     this.xrHudTexture = texture;
-    this.engine.scene.add(panel);
+    this.engine.xrHudRoot.add(panel);
+    this.xrRuntimeState.hudReady = true;
   }
 
   #renderXRHud(objectiveText, promptText) {
@@ -164,6 +198,55 @@ export class VRControllerSystem {
     });
     if (line) context.fillText(line, x, y);
   }
+
+  #setHudVisible(visible) {
+    if (this.xrHud) this.xrHud.visible = visible;
+    this.xrRuntimeState.hudReady = Boolean(this.xrHud);
+  }
+
+  #refreshRuntimeState() {
+    this.xrRuntimeState.sessionActive = this.sessionActive;
+    this.xrRuntimeState.renderLoopReady = this.engine.renderLoopActive;
+    this.xrRuntimeState.xrLoadingRoomVisible = this.xrLoadingRoom?.isVisible?.() ?? false;
+    this.xrRuntimeState.currentSceneReady = this.engine.worldRoot.visible && this.engine.worldRoot.children.length > 0;
+    this.xrRuntimeState.xrRigReady = this.playerController.xrActive && this.engine.camera.parent === this.engine.xrLocomotionRig;
+    this.xrRuntimeState.hudReady = Boolean(this.xrHud);
+  }
+
+  async #stabilizeXrView() {
+    let validation = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await waitForNextFrame();
+      await waitForNextFrame();
+      validation = validateXrViewAgainstSceneBounds({ engine: this.engine, playerController: this.playerController });
+      this.lastValidation = validation;
+      this.#refreshRuntimeState();
+      if (validation.ok) {
+        this.xrLoadingRoom?.hide();
+        this.#refreshRuntimeState();
+        this.#broadcastSupport('VR 模式已开启：左摇杆移动，右摇杆转向，扳机互动。');
+        return validation;
+      }
+      this.xrLoadingRoom?.show(validation.message || '正在重新校准 XR 视野……');
+      this.playerController.enterXRMode({ spawn: this.playerController.getSafeSpawnPosition() });
+    }
+
+    this.#broadcastSupport(summarizeXrRuntimeState(this.xrRuntimeState, validation));
+    return validation;
+  }
+
+  onSceneLoadStart(sceneId = '') {
+    if (!this.sessionActive) return;
+    this.xrLoadingRoom?.show(sceneId ? `正在切换至 ${sceneId} 对应场景……` : '正在切换场景……');
+    this.#refreshRuntimeState();
+  }
+
+  async onSceneReady(sceneId = '') {
+    if (!this.sessionActive) return;
+    this.xrLoadingRoom?.show(sceneId ? `正在校验 ${sceneId} 的 XR 视野……` : '正在校验 XR 视野……');
+    await this.#stabilizeXrView();
+  }
+
   exitVR() {
     const session = this.engine.renderer.xr.getSession();
     if (session) {
@@ -178,6 +261,11 @@ export class VRControllerSystem {
       this.#broadcastSupport(formatWebXrSupportMessage(this.diagnostics));
       return;
     }
+
+    await this.ensureRuntimeStarted?.();
+    this.xrLoadingRoom?.show('正在请求 immersive-vr 会话……');
+    this.#refreshRuntimeState();
+
     try {
       const session = await beginImmersiveVRFromUserGesture({
         navigatorXR: navigator.xr,
@@ -185,38 +273,43 @@ export class VRControllerSystem {
         diagnostics: this.diagnostics
       });
       this.sessionActive = true;
-      this.playerController.setXRMode(true);
-      this.playerController.resetToSpawn();
-      this.#broadcastSupport('VR 模式已开启：左摇杆移动，右摇杆转向，扳机互动。');
-      this.#attachHudToXRCamera();
+      this.playerController.enterXRMode({ spawn: this.playerController.getSafeSpawnPosition() });
       this.#createButtons(true);
+      this.#setHudVisible(true);
+      this.#refreshRuntimeState();
+      await this.#stabilizeXrView();
       session.addEventListener('end', async () => {
         this.sessionActive = false;
-        this.playerController.setXRMode(false);
-        if (this.xrHud) this.xrHud.visible = false;
+        this.playerController.exitXRMode();
+        this.xrLoadingRoom?.hide();
+        this.#setHudVisible(false);
         this.diagnostics = await getWebXrDiagnostics();
+        this.supported = canEnterImmersiveVr(this.diagnostics);
         this.#broadcastSupport(formatWebXrSupportMessage(this.diagnostics));
-        this.#createButtons(canEnterImmersiveVr(this.diagnostics));
+        this.#createButtons(this.supported);
+        this.#refreshRuntimeState();
       });
     } catch (error) {
       console.warn('[WebXR] 进入 VR 失败', error);
+      this.xrLoadingRoom?.show(error?.message || '进入 VR 失败，请检查 HTTPS、浏览器与设备支持。');
       this.#broadcastSupport(error?.message || '进入 VR 失败，请确认浏览器、设备与访问环境支持 WebXR。');
       this.#createButtons(this.supported);
+      this.#refreshRuntimeState();
     }
-  }
-
-  #attachHudToXRCamera() {
-    if (!this.xrHud) return;
-    const xrCamera = this.engine.renderer.xr.getCamera(this.engine.camera);
-    xrCamera.add(this.xrHud);
-    this.xrHud.position.set(0, -0.1, -XR_PROMPT_DISTANCE);
-    this.xrHud.visible = true;
   }
 
   update(delta, mode, playerPosition) {
     if (!this.engine.renderer.xr.isPresenting) return;
+
+    this.validationCooldown -= delta;
+    if (this.validationCooldown <= 0) {
+      this.lastValidation = validateXrViewAgainstSceneBounds({ engine: this.engine, playerController: this.playerController });
+      this.validationCooldown = 0.75;
+      this.#refreshRuntimeState();
+    }
+
     if (mode !== 'explore') {
-      if (this.xrHud) this.xrHud.visible = true;
+      this.#setHudVisible(true);
       this.#renderXRHud(this.getObjective?.() ?? '', '当前处于对话或调查状态，已暂停移动。');
       return;
     }
@@ -228,8 +321,8 @@ export class VRControllerSystem {
       ? '按下扳机' + focused.actionLabel + (focused.promptTitle ? '：' + focused.promptTitle : '')
       : '将控制器射线对准 NPC、物件或传送门后按下扳机。';
     const objectiveText = this.getObjective?.() ?? '';
-    if (this.xrHud && (promptText !== this.lastPrompt || objectiveText !== this.lastObjective)) {
-      this.xrHud.visible = true;
+    if (promptText !== this.lastPrompt || objectiveText !== this.lastObjective) {
+      this.#setHudVisible(true);
       this.#renderXRHud(objectiveText, promptText);
       this.lastPrompt = promptText;
       this.lastObjective = objectiveText;
@@ -246,7 +339,7 @@ export class VRControllerSystem {
       const yAxis = applyDeadzone(leftSource.gamepad.axes?.[1] ?? 0);
       const magnitude = xAxis * xAxis + yAxis * yAxis;
       if (magnitude > 0.001) {
-        const xrCamera = this.engine.renderer.xr.getCamera(this.engine.camera);
+        const xrCamera = this.engine.getActiveXrCamera();
         const forward = new THREE.Vector3();
         xrCamera.getWorldDirection(forward);
         forward.y = 0;
@@ -256,7 +349,7 @@ export class VRControllerSystem {
           .addScaledVector(right, xAxis)
           .addScaledVector(forward, -yAxis)
           .multiplyScalar(delta * 2.45);
-        this.playerController.moveByWorldVector(movement);
+        this.playerController.moveXrRigByWorldVector(movement);
       }
     }
 
@@ -264,8 +357,7 @@ export class VRControllerSystem {
     if (rightSource?.gamepad && this.turnCooldown <= 0) {
       const turnAxis = applyDeadzone(rightSource.gamepad.axes?.[0] ?? 0, 0.55);
       if (Math.abs(turnAxis) > 0) {
-        this.playerController.yaw -= Math.sign(turnAxis) * SNAP_TURN_ANGLE;
-        this.playerController.cameraYaw = this.playerController.yaw;
+        this.playerController.rotateXrRigByRadians(-Math.sign(turnAxis) * SNAP_TURN_ANGLE);
         this.turnCooldown = 0.24;
       }
     }
@@ -283,12 +375,9 @@ export class VRControllerSystem {
       leftAxes: leftSource?.gamepad?.axes ?? [],
       rightAxes: rightSource?.gamepad?.axes ?? [],
       diagnostics: this.diagnostics ?? null,
-      sessionState: getXrSessionState()
+      sessionState: getXrSessionState(),
+      runtimeState: { ...this.xrRuntimeState },
+      validation: this.lastValidation
     };
   }
 }
-
-
-
-
-
